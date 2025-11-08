@@ -6,11 +6,11 @@
 #include <RF24.h>
 
 // nRF24L01+ SPI parameters
-#define CE_PIN   9
-#define CSN_PIN 10
+#define CE_PIN  14
+#define CSN_PIN  8
 
 // Harmony RF24 network and radio parameters
-const uint64_t address = 0xFFFFFFFFFF; // Unique remote RF24 address. Use NetworkAddress script to find it
+const uint64_t address = 0xF305984508; // Unique remote RF24 address. Use NetworkAddress script to find it
 const uint8_t channel = 5; // Choose 5,8,14,17,32,35,41,44,62,65,71 or 74
 
 RF24 radio(CE_PIN, CSN_PIN);
