@@ -6,8 +6,8 @@
 #include <RF24.h>
 
 // nRF24L01+ SPI parameters
-#define CE_PIN   9
-#define CSN_PIN 10
+#define CE_PIN  14
+#define CSN_PIN  8
 
 // Harmony RF24 network and radio parameters
 const uint64_t address = 0xBB0ADCA575; // Common pairing RF24 address
