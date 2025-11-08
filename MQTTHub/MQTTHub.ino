@@ -18,12 +18,12 @@ const char* mqtt_pass = "MQTT PASSWORD";
 const int mqtt_port = 1883;
 const char* mqtt_topic = "harmony/one";
 
-// nRF24L01+ SPI parameters (need to match hardware connection to nRF24L01+ module)
-#define CE_PIN 22
-#define CSN_PIN 5
+// nRF24L01+ SPI parameters
+#define CE_PIN  14
+#define CSN_PIN  8
 
 // Harmony RF24 network and radio parameters
-const uint64_t address = 0xFFFFFFFF; // Unique remote RF24 address. Use NetworkAddress script to find it
+const uint64_t address = 0xF305984508; // Unique remote RF24 address. Use NetworkAddress script to find it
 const uint8_t channel = 5; // Choose 5,8,14,17,32,35,41,44,62,65,71 or 74. Any one should work
 
 // Settings for input functions (in ms)
