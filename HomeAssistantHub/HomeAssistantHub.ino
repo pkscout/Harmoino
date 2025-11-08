@@ -164,7 +164,7 @@ void setup() {
   KEY_PRESS.setName("Key Press");
   KEY_PRESS.setForceUpdate(true);
   KEY_PRESS.setIcon("mdi:button-pointer");
-  KEY_PRESS.setAvailability(false);
+  KEY_PRESS.setAvailability(true);
   UPTIME.setName("Uptime");
   UPTIME.setExpireAfter(30);
   UPTIME.setEntityCategory("diagnostic");
@@ -318,7 +318,7 @@ void loop() {
         Serial.print("Publishing to Home Assistant: ");
         Serial.println(harmony_current_command.name);
         KEY_PRESS.setValue(harmony_current_command.name);
-        KEY_PRESS.setAvailability("available");
+//        KEY_PRESS.setAvailability("available");
         harmony_repeat_counter++;
         harmony_repeat_time = now;
       }
