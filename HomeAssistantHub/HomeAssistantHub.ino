@@ -9,7 +9,6 @@
 // BROKER_USER - the MQTT username (you can put anything here if you're not using auth on MQTT)
 // BROKER_PASS - the MQTT password (you can put anything here if you're not using auth on MQTT)
 // DEVICE_NAME - the name of the remote
-// LONG_PRESS_THRESHOLD - an integer of the milliseconds a key must be held to be considered a long press
 
 #define SOFTWARE_VERSION "1.0.0"
 #define MANUFACTURER "pkscout"
@@ -115,7 +114,8 @@ HASensor KEY_PRESS("key_press");
 HASensor UPTIME("uptime");
 HASensor MAC_ADDRESS("mac_address");
 HASensorNumber RSSI("rssi");
-const int QUEUE_LENGTH = 128;
+bool FIRSTPRESS = true;
+bool FIRSTRUN = true;
 
 // nRF24L01+ radio
 RF24 radio(CE_PIN, CSN_PIN);
@@ -147,8 +147,12 @@ void setup() {
   Serial.begin(115200);
   setup_nRF24();
   setup_wifi();
+  setup_homeAssistant();
+ 
+}
 
-  // setup HA device
+void setup_homeAssistant() {
+ // setup HA device
   byte mac[6];
   WiFi.macAddress(mac);
   sprintf(MAC_CHAR, "%2X:%2X:%2X:%2X:%2X:%2X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
@@ -161,10 +165,12 @@ void setup() {
   DEVICE.setModel(MODEL);
   DEVICE.setConfigurationUrl(CONFIGURL);
   DEVICE.enableExtendedUniqueIds();
+  DEVICE.enableLastWill();
   KEY_PRESS.setName("Key Press");
   KEY_PRESS.setForceUpdate(true);
   KEY_PRESS.setIcon("mdi:button-pointer");
-  KEY_PRESS.setAvailability(true);
+  KEY_PRESS.setExpireAfter(5);
+  KEY_PRESS.setAvailability(false);
   UPTIME.setName("Uptime");
   UPTIME.setExpireAfter(30);
   UPTIME.setEntityCategory("diagnostic");
@@ -176,11 +182,13 @@ void setup() {
   RSSI.setIcon("mdi:wifi");
   RSSI.setUnitOfMeasurement("dBm");
   RSSI.setEntityCategory("diagnostic");
+  RSSI.setExpireAfter(90);
 
  // start MQTT connection
   Serial.print("Starting connection to MQTT broker at ");
   Serial.println(BROKER_ADDR);
-  MQTT.begin(BROKER_ADDR);
+  MQTT.begin(BROKER_ADDR, BROKER_PORT, BROKER_USER, BROKER_PASS);
+ 
 }
 
 void setup_nRF24() {
@@ -239,6 +247,12 @@ get_harmony_command(uint32_t id) {
 
 void loop() {
   MQTT.loop();
+
+  if (FIRSTRUN) {
+    MAC_ADDRESS.setValue(MAC_CHAR);
+    RSSI.setValue(WiFi.RSSI());
+    FIRSTRUN = false;
+  };
 
   uint8_t pipeNum;
   if ( radio.available(&pipeNum) ) {
@@ -318,7 +332,10 @@ void loop() {
         Serial.print("Publishing to Home Assistant: ");
         Serial.println(harmony_current_command.name);
         KEY_PRESS.setValue(harmony_current_command.name);
-//        KEY_PRESS.setAvailability("available");
+        if (FIRSTPRESS) {
+          KEY_PRESS.setAvailability(true);
+          FIRSTPRESS = false;
+        };
         harmony_repeat_counter++;
         harmony_repeat_time = now;
       }
@@ -343,7 +360,10 @@ void loop() {
         Serial.print("Publishing to Home Assistant: ");
         Serial.println(mqtt_payload);
         KEY_PRESS.setValue(mqtt_payload);
-        KEY_PRESS.setAvailability("available");
+        if (FIRSTPRESS) {
+          KEY_PRESS.setAvailability(true);
+          FIRSTPRESS = false;
+        };
         harmony_press_counter = 0;
       } 
     }
@@ -384,7 +404,6 @@ void loop() {
   }
 
   if ((millis() - LONG_LAST_UPDATE_AT) > 60000) { // update in 60s interval
-    MAC_ADDRESS.setValue(MAC_CHAR);
     RSSI.setValue(WiFi.RSSI());
     LONG_LAST_UPDATE_AT = millis();
   }
