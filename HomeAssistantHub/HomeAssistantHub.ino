@@ -167,14 +167,14 @@ void setup_homeAssistant() {
   DEVICE.enableExtendedUniqueIds();
   DEVICE.enableLastWill();
   KEY_PRESS.setName("Key Press");
-  KEY_PRESS.setForceUpdate(true);
   KEY_PRESS.setIcon("mdi:button-pointer");
+  KEY_PRESS.setForceUpdate(true);
   KEY_PRESS.setExpireAfter(5);
   KEY_PRESS.setAvailability(false);
   UPTIME.setName("Uptime");
-  UPTIME.setExpireAfter(30);
   UPTIME.setEntityCategory("diagnostic");
   UPTIME.setIcon("mdi:clock-check-outline");
+  UPTIME.setExpireAfter(10);
   MAC_ADDRESS.setName("MAC Address");
   MAC_ADDRESS.setIcon("mdi:ethernet");
   MAC_ADDRESS.setEntityCategory("diagnostic");
@@ -182,7 +182,8 @@ void setup_homeAssistant() {
   RSSI.setIcon("mdi:wifi");
   RSSI.setUnitOfMeasurement("dBm");
   RSSI.setEntityCategory("diagnostic");
-  RSSI.setExpireAfter(90);
+  RSSI.setForceUpdate(true);
+  RSSI.setExpireAfter(70);
 
  // start MQTT connection
   Serial.print("Starting connection to MQTT broker at ");
