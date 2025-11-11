@@ -165,16 +165,16 @@ void setup_homeAssistant() {
   DEVICE.setModel(MODEL);
   DEVICE.setConfigurationUrl(CONFIGURL);
   DEVICE.enableExtendedUniqueIds();
+  DEVICE.enableSharedAvailability();
   DEVICE.enableLastWill();
   KEY_PRESS.setName("Key Press");
   KEY_PRESS.setIcon("mdi:button-pointer");
   KEY_PRESS.setForceUpdate(true);
-  KEY_PRESS.setExpireAfter(5);
-  KEY_PRESS.setAvailability(false);
+  KEY_PRESS.setExpireAfter(2);
   UPTIME.setName("Uptime");
   UPTIME.setEntityCategory("diagnostic");
   UPTIME.setIcon("mdi:clock-check-outline");
-  UPTIME.setExpireAfter(10);
+  UPTIME.setExpireAfter(40);
   MAC_ADDRESS.setName("MAC Address");
   MAC_ADDRESS.setIcon("mdi:ethernet");
   MAC_ADDRESS.setEntityCategory("diagnostic");
@@ -183,8 +183,7 @@ void setup_homeAssistant() {
   RSSI.setUnitOfMeasurement("dBm");
   RSSI.setEntityCategory("diagnostic");
   RSSI.setForceUpdate(true);
-  RSSI.setExpireAfter(70);
-
+  
  // start MQTT connection
   Serial.print("Starting connection to MQTT broker at ");
   Serial.println(BROKER_ADDR);
@@ -333,10 +332,6 @@ void loop() {
         Serial.print("Publishing to Home Assistant: ");
         Serial.println(harmony_current_command.name);
         KEY_PRESS.setValue(harmony_current_command.name);
-        if (FIRSTPRESS) {
-          KEY_PRESS.setAvailability(true);
-          FIRSTPRESS = false;
-        };
         harmony_repeat_counter++;
         harmony_repeat_time = now;
       }
@@ -361,10 +356,6 @@ void loop() {
         Serial.print("Publishing to Home Assistant: ");
         Serial.println(mqtt_payload);
         KEY_PRESS.setValue(mqtt_payload);
-        if (FIRSTPRESS) {
-          KEY_PRESS.setAvailability(true);
-          FIRSTPRESS = false;
-        };
         harmony_press_counter = 0;
       } 
     }
