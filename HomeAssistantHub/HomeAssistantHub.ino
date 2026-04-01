@@ -3,8 +3,6 @@
 //  and to format these and pass them on over mqtt to Home Assistant
 
 // arduino_secrets.h needs to contain #define statements for
-// SECRET_SSID - the SSID of the wifi network
-// SECRET_PASS - the password of the wifi network
 // BROKER_ADDR - the IP address of the broker in the format IPAddress(127,0,0,1)
 // BROKER_USER - the MQTT username (you can put anything here if you're not using auth on MQTT)
 // BROKER_PASS - the MQTT password (you can put anything here if you're not using auth on MQTT)
@@ -15,8 +13,7 @@
 #define MODEL "Harmony Companion OpenHub"
 #define CONFIGURL "https://github.com/pkscout/Harmoino"
 
-#include <WiFi.h>
-#include <Wire.h>
+#include <ETH.h>
 #include <SPI.h>
 #include <nRF24L01.h>
 #include <RF24.h>
@@ -24,8 +21,8 @@
 #include "arduino_secrets.h"
 
 // nRF24L01+ SPI parameters
-#define CE_PIN  14
-#define CSN_PIN  8
+#define CE_PIN  15
+#define CSN_PIN 18
 
 // Harmony RF24 network and radio parameters
 const uint64_t address = 0xF305984508; // Unique remote RF24 address. Use NetworkAddress script to find it
@@ -102,7 +99,7 @@ harmony_command_t harmony_command_list[] =
 // End of user configurable parameters
 
 // WiFi and Home Assistant mqtt clients
-WiFiClient CLIENT;
+NetworkClient CLIENT;
 HADevice DEVICE;
 HAMqtt MQTT(CLIENT, DEVICE);
 unsigned long SHORT_LAST_UPDATE_AT = 0;
@@ -113,7 +110,7 @@ char MAC_CHAR[18];
 HASensor KEY_PRESS("key_press");
 HASensor UPTIME("uptime");
 HASensor MAC_ADDRESS("mac_address");
-HASensorNumber RSSI("rssi");
+
 bool FIRSTPRESS = true;
 bool FIRSTRUN = true;
 
@@ -146,7 +143,7 @@ void setup() {
   // Setup communication protocols
   Serial.begin(115200);
   setup_nRF24();
-  setup_wifi();
+  setup_network();
   setup_homeAssistant();
  
 }
@@ -154,7 +151,7 @@ void setup() {
 void setup_homeAssistant() {
  // setup HA device
   byte mac[6];
-  WiFi.macAddress(mac);
+  ETH.macAddress(mac);
   sprintf(MAC_CHAR, "%2X:%2X:%2X:%2X:%2X:%2X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
   Serial.printf("Mac address: ");
   Serial.println(MAC_CHAR);
@@ -178,11 +175,6 @@ void setup_homeAssistant() {
   MAC_ADDRESS.setName("MAC Address");
   MAC_ADDRESS.setIcon("mdi:ethernet");
   MAC_ADDRESS.setEntityCategory("diagnostic");
-  RSSI.setName("WiFi Signal");
-  RSSI.setIcon("mdi:wifi");
-  RSSI.setUnitOfMeasurement("dBm");
-  RSSI.setEntityCategory("diagnostic");
-  RSSI.setForceUpdate(true);
   
  // start MQTT connection
   Serial.print("Starting connection to MQTT broker at ");
@@ -192,9 +184,9 @@ void setup_homeAssistant() {
 }
 
 void setup_nRF24() {
-  SPI.begin();
+  SPI.begin(HSPI);
   if(!radio.begin(&SPI)) {
-  Serial.println("nRF24L01+ Radio hardware not responding");
+    Serial.println("nRF24L01+ Radio hardware not responding");
     while(1); // Stop execution if nRF24L01+ hardware is not properly connected
   } else {
     Serial.println("nRF24L01+ Radio hardware started");
@@ -211,23 +203,13 @@ void setup_nRF24() {
   Serial.println("nRF24L01+ Radio hardware configured");
 }
 
-void setup_wifi() {
+void setup_network() {
   delay(10);
   Serial.println();
-  Serial.print("Connecting to ");
-  Serial.println(SECRET_SSID);
-
-  WiFi.begin(SECRET_SSID, SECRET_PASS);
-
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
-  }
-
-  Serial.println("");
-  Serial.println("WiFi connected");
+  Serial.print("Connecting to network");
+  ETH.begin(ETH_PHY_RTL8201, 0, 16, 17, -1, ETH_CLOCK_GPIO0_IN);
   Serial.println("IP address: ");
-  Serial.println(WiFi.localIP());
+  Serial.println(ETH.localIP());
 }
 
 harmony_command_t
@@ -250,7 +232,6 @@ void loop() {
 
   if (FIRSTRUN) {
     MAC_ADDRESS.setValue(MAC_CHAR);
-    RSSI.setValue(WiFi.RSSI());
     FIRSTRUN = false;
   };
 
@@ -396,7 +377,6 @@ void loop() {
   }
 
   if ((millis() - LONG_LAST_UPDATE_AT) > 60000) { // update in 60s interval
-    RSSI.setValue(WiFi.RSSI());
     LONG_LAST_UPDATE_AT = millis();
   }
 }
