@@ -142,10 +142,9 @@ harmony_command_t harmony_current_command = harmony_default_command;
 void setup() {
   // Setup communication protocols
   Serial.begin(115200);
-  setup_nRF24();
   setup_network();
   setup_homeAssistant();
- 
+  setup_nRF24(); 
 }
 
 void setup_homeAssistant() {
