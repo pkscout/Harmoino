@@ -3,12 +3,16 @@
 //  and to format these and pass them on over mqtt to Home Assistant
 
 // arduino_secrets.h needs to contain #define statements for
+// CE - the pin number for the CE connection to the radio
+// CSN - the pin number for the CSN connection to the radio
+// RADIO_ADR - the Harmony remote address you got from the NetworkAddress sketch
+// RADIO_CH - the channel you want to use to listen for remotes (5 is probably fine)
 // BROKER_ADDR - the IP address of the broker in the format IPAddress(127,0,0,1)
 // BROKER_USER - the MQTT username (you can put anything here if you're not using auth on MQTT)
 // BROKER_PASS - the MQTT password (you can put anything here if you're not using auth on MQTT)
 // DEVICE_NAME - the name of the remote
 
-#define SOFTWARE_VERSION "1.0.0"
+#define SOFTWARE_VERSION "1.1.0"
 #define MANUFACTURER "pkscout"
 #define MODEL "Harmony Companion OpenHub"
 #define CONFIGURL "https://github.com/pkscout/Harmoino"
@@ -21,12 +25,12 @@
 #include "arduino_secrets.h"
 
 // nRF24L01+ SPI parameters
-#define CE_PIN  15
-#define CSN_PIN 18
+#define CE_PIN  CE
+#define CSN_PIN CSN
 
 // Harmony RF24 network and radio parameters
-const uint64_t address = 0xF305984508; // Unique remote RF24 address. Use NetworkAddress script to find it
-const uint8_t channel = 5; // Choose 5,8,14,17,32,35,41,44,62,65,71 or 74. Any one should work
+const uint64_t address = RADIO_ADR; // Unique remote RF24 address. Use NetworkAddress script to find it
+const uint8_t channel = RADIO_CH; // Choose 5,8,14,17,32,35,41,44,62,65,71 or 74. Any one should work
 
 // Settings for input functions (in ms)
 const long harmony_click_duration = 500; // Maximal duration of a click, and minimal duration for a long press
@@ -98,7 +102,7 @@ harmony_command_t harmony_command_list[] =
 
 // End of user configurable parameters
 
-// WiFi and Home Assistant mqtt clients
+// Ethernet and Home Assistant mqtt clients
 NetworkClient CLIENT;
 HADevice DEVICE;
 HAMqtt MQTT(CLIENT, DEVICE);
@@ -110,9 +114,13 @@ char MAC_CHAR[18];
 HASensor KEY_PRESS("key_press");
 HASensor UPTIME("uptime");
 HASensor MAC_ADDRESS("mac_address");
-
+HASensor IP_ADDRESS("ip_address");
+HASensor RADIO_STATUS("radio_active");
 bool FIRSTPRESS = true;
 bool FIRSTRUN = true;
+bool RADIOACTIVE = false;
+
+byte MAC[6];
 
 // nRF24L01+ radio
 RF24 radio(CE_PIN, CSN_PIN);
@@ -143,18 +151,14 @@ void setup() {
   // Setup communication protocols
   Serial.begin(115200);
   setup_network();
-  setup_homeAssistant();
   setup_nRF24(); 
+  setup_homeAssistant();
 }
 
 void setup_homeAssistant() {
  // setup HA device
-  byte mac[6];
-  ETH.macAddress(mac);
-  sprintf(MAC_CHAR, "%2X:%2X:%2X:%2X:%2X:%2X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-  Serial.printf("Mac address: ");
   Serial.println(MAC_CHAR);
-  DEVICE.setUniqueId(mac, sizeof(mac));
+  DEVICE.setUniqueId(MAC, sizeof(MAC));
   DEVICE.setName(DEVICE_NAME);
   DEVICE.setSoftwareVersion(SOFTWARE_VERSION);
   DEVICE.setManufacturer(MANUFACTURER);
@@ -174,6 +178,15 @@ void setup_homeAssistant() {
   MAC_ADDRESS.setName("MAC Address");
   MAC_ADDRESS.setIcon("mdi:ethernet");
   MAC_ADDRESS.setEntityCategory("diagnostic");
+  MAC_ADDRESS.setName("IP Address");
+  MAC_ADDRESS.setIcon("mdi:network-outline");
+  MAC_ADDRESS.setEntityCategory("diagnostic");
+  IP_ADDRESS.setName("MAC Address");
+  IP_ADDRESS.setIcon("mdi:ethernet");
+  IP_ADDRESS.setEntityCategory("diagnostic");
+  RADIO_STATUS.setName("Radio Status");
+  RADIO_STATUS.setIcon("mdi:radio-tower");
+  RADIO_STATUS.setEntityCategory("diagnostic");
   
  // start MQTT connection
   Serial.print("Starting connection to MQTT broker at ");
@@ -183,31 +196,35 @@ void setup_homeAssistant() {
 }
 
 void setup_nRF24() {
-  SPI.begin(HSPI);
-  if(!radio.begin(&SPI)) {
+  SPI.begin();
+  RADIOACTIVE = radio.begin(&SPI);
+  if( !RADIOACTIVE ) {
     Serial.println("nRF24L01+ Radio hardware not responding");
-    while(1); // Stop execution if nRF24L01+ hardware is not properly connected
   } else {
     Serial.println("nRF24L01+ Radio hardware started");
+    RADIOACTIVE = true;
+    // nRF24L01+ radio settings (fixed to match Harmony remotes)
+    radio.setChannel(channel);
+    radio.setDataRate(RF24_2MBPS);
+    radio.enableDynamicPayloads();
+    radio.setCRCLength (RF24_CRC_16);
+    radio.openReadingPipe(1, address & 0xFFFFFFFF00);
+    radio.openReadingPipe(2, address & 0xFFFFFFFFFF);
+    radio.startListening();
+    Serial.println("nRF24L01+ Radio hardware configured");
   }
-  
-  // nRF24L01+ radio settings (fixed to match Harmony remotes)
-  radio.setChannel(channel);
-  radio.setDataRate(RF24_2MBPS);
-  radio.enableDynamicPayloads();
-  radio.setCRCLength (RF24_CRC_16);
-  radio.openReadingPipe(1, address & 0xFFFFFFFF00);
-  radio.openReadingPipe(2, address & 0xFFFFFFFFFF);
-  radio.startListening();
-  Serial.println("nRF24L01+ Radio hardware configured");
 }
 
 void setup_network() {
   delay(10);
-  Serial.println();
-  Serial.print("Connecting to network");
   ETH.begin(ETH_PHY_RTL8201, 0, 16, 17, -1, ETH_CLOCK_GPIO0_IN);
-  Serial.println("IP address: ");
+  ETH.macAddress(MAC);
+  sprintf(MAC_CHAR, "%2X:%2X:%2X:%2X:%2X:%2X", MAC[0], MAC[1], MAC[2], MAC[3], MAC[4], MAC[5]);
+  Serial.println("");
+  Serial.println("Connected to network");
+  Serial.print("MAC Address: ");
+  Serial.println(MAC_CHAR);
+  Serial.print("IP address: ");
   Serial.println(ETH.localIP());
 }
 
@@ -231,11 +248,17 @@ void loop() {
 
   if (FIRSTRUN) {
     MAC_ADDRESS.setValue(MAC_CHAR);
+    IP_ADDRESS.setValue(ETH.localIP().toString().c_str());
+    if (RADIOACTIVE) {
+      RADIO_STATUS.setValue("active");
+    } else {
+      RADIO_STATUS.setValue("off");
+    }
     FIRSTRUN = false;
   };
 
   uint8_t pipeNum;
-  if ( radio.available(&pipeNum) ) {
+  if ( radio.available(&pipeNum) and RADIOACTIVE ) {
       // Read packet
       uint8_t dataReceived[32];
       int payloadSize = radio.getDynamicPayloadSize();
@@ -373,9 +396,5 @@ void loop() {
     }
     UPTIME.setValue(UPTIME_CHAR);
     SHORT_LAST_UPDATE_AT = millis();
-  }
-
-  if ((millis() - LONG_LAST_UPDATE_AT) > 60000) { // update in 60s interval
-    LONG_LAST_UPDATE_AT = millis();
   }
 }
