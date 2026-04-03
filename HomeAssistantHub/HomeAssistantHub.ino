@@ -111,16 +111,17 @@ unsigned long LONG_LAST_UPDATE_AT = 0;
 char mqtt_payload[50];
 char UPTIME_CHAR[40];
 char MAC_CHAR[18];
+char IP_CHAR[15];
+char RADIO_STATUS_CHAR[6];
+bool FIRSTPRESS = true;
+bool FIRSTRUN = true;
+bool RADIOACTIVE = false;
+byte MAC[6];
 HASensor KEY_PRESS("key_press");
 HASensor UPTIME("uptime");
 HASensor MAC_ADDRESS("mac_address");
 HASensor IP_ADDRESS("ip_address");
 HASensor RADIO_STATUS("radio_active");
-bool FIRSTPRESS = true;
-bool FIRSTRUN = true;
-bool RADIOACTIVE = false;
-
-byte MAC[6];
 
 // nRF24L01+ radio
 RF24 radio(CE_PIN, CSN_PIN);
@@ -200,9 +201,11 @@ void setup_nRF24() {
   RADIOACTIVE = radio.begin(&SPI);
   if( !RADIOACTIVE ) {
     Serial.println("nRF24L01+ Radio hardware not responding");
+    RADIO_STATUS_CHAR = "off";
   } else {
     Serial.println("nRF24L01+ Radio hardware started");
     RADIOACTIVE = true;
+    RADIO_STATUS_CHAR = "active";
     // nRF24L01+ radio settings (fixed to match Harmony remotes)
     radio.setChannel(channel);
     radio.setDataRate(RF24_2MBPS);
@@ -220,12 +223,13 @@ void setup_network() {
   ETH.begin(ETH_PHY_RTL8201, 0, 16, 17, -1, ETH_CLOCK_GPIO0_IN);
   ETH.macAddress(MAC);
   sprintf(MAC_CHAR, "%2X:%2X:%2X:%2X:%2X:%2X", MAC[0], MAC[1], MAC[2], MAC[3], MAC[4], MAC[5]);
+  IP_CHAR = ETH.localIP().toString().c_str();
   Serial.println("");
   Serial.println("Connected to network");
   Serial.print("MAC Address: ");
   Serial.println(MAC_CHAR);
   Serial.print("IP address: ");
-  Serial.println(ETH.localIP());
+  Serial.println(IP_CHAR);
 }
 
 harmony_command_t
@@ -248,12 +252,8 @@ void loop() {
 
   if (FIRSTRUN) {
     MAC_ADDRESS.setValue(MAC_CHAR);
-    IP_ADDRESS.setValue(ETH.localIP().toString().c_str());
-    if (RADIOACTIVE) {
-      RADIO_STATUS.setValue("active");
-    } else {
-      RADIO_STATUS.setValue("off");
-    }
+    IP_ADDRESS.setValue(IP_CHAR);
+    RADIO_STATUS.setValue(RADIO_STATUS_CHAR);
     FIRSTRUN = false;
   };
 
