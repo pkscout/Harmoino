@@ -71,7 +71,7 @@
 // PLUS - key press (default 0)
 // MINUS - key press (default 0)
 
-#define SOFTWARE_VERSION "2.0.0"
+#define SOFTWARE_VERSION "2.1.0"
 #define MANUFACTURER "pkscout"
 #define MODEL "Harmony Companion OpenHub"
 #define CONFIGURL "https://github.com/pkscout/Harmoino"
@@ -161,15 +161,15 @@ unsigned long SHORT_LAST_UPDATE_AT = 0;
 unsigned long LONG_LAST_UPDATE_AT = 0;
 char mqtt_payload[50];
 char UPTIME_CHAR[100];
-char RADIO_STATUS_CHAR[100];
 char MAC_CHAR[100];
 bool FIRSTPRESS = true;
 bool RADIOACTIVE = false;
 byte MAC[6];
 HASensor KEY_PRESS("key_press");
 HASensor UPTIME("uptime");
-HASensor RADIO_STATUS("radio_active");
+HABinarySensor RADIO_STATUS("radio_active");
 HASensor MAC_ADDRESS("mac_address");
+HASensor INSTRUCTIONS("instructions");
 
 // nRF24L01+ radio
 RF24 radio(CE_PIN, CSN_PIN);
@@ -234,11 +234,9 @@ void setup_nRF24() {
   RADIOACTIVE = radio.begin(&SPI);
   if( !RADIOACTIVE ) {
     Serial.println("nRF24L01+ Radio hardware not responding");
-    sprintf(RADIO_STATUS_CHAR,"off");
   } else {
     Serial.println("nRF24L01+ Radio hardware started");
     RADIOACTIVE = true;
-    sprintf(RADIO_STATUS_CHAR,"active");
     // nRF24L01+ radio settings (fixed to match Harmony remotes)
     radio.setChannel(RADIO_CH);
     radio.setDataRate(RF24_2MBPS);
@@ -276,6 +274,9 @@ void setup_homeAssistant() {
   RADIO_STATUS.setName("Radio Status");
   RADIO_STATUS.setIcon("mdi:radio-tower");
   RADIO_STATUS.setEntityCategory("diagnostic");
+  INSTRUCTIONS.setName("Instructions");
+  INSTRUCTIONS.setIcon("mdi:file-document-outline");
+  INSTRUCTIONS.setEntityCategory("diagnostic");
  // start MQTT connection
   Serial.print("Starting connection to MQTT broker at ");
   Serial.println(BROKER_ADDR);
@@ -440,7 +441,8 @@ void loop() {
     }
     UPTIME.setValue(UPTIME_CHAR);
     MAC_ADDRESS.setValue(MAC_CHAR);
-    RADIO_STATUS.setValue(RADIO_STATUS_CHAR);
+    RADIO_STATUS.setState(RADIOACTIVE);
+    INSTRUCTIONS.setValue("none");
     SHORT_LAST_UPDATE_AT = millis();
   }
 
