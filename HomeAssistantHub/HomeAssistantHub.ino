@@ -28,51 +28,25 @@
 #define MODEL "Harmony Companion OpenHub"
 #define CONFIGURL "https://github.com/pkscout/Harmoino"
 
+#include "arduino_secrets.h"
+#include "defaults.h"
+#if USE_WIRED
 #include <ETH.h>
+#define CONNECT ETH.begin(ETH_PHY_RTL8201, 0, 16, 17, -1, ETH_CLOCK_GPIO0_IN)
+#define GETMAC ETH.macAddress(MAC)
+#define NETWORKUP ETH.linkUp()
+#define NETWORKCLIENT NetworkClient CLIENT
+#else
+#include <WiFi.h>
+#define CONNECT WiFi.begin(SECRET_SSID, SECRET_PASS)
+#define GETMAC WiFi.macAddress(MAC)
+#define NETWORKUP WiFi.status() == WL_CONNECTED
+#define NETWORKCLIENT WiFiClient CLIENT
+#endif
 #include <SPI.h>
 #include <nRF24L01.h>
 #include <RF24.h>
 #include <ArduinoHA.h>
-#include "arduino_secrets.h"
-
-// nRF24L01+ parameters
-#ifndef CE_PIN
-#define CE_PIN 2
-#endif
-#ifndef CSN_PIN
-#define CSN_PIN 4
-#endif
-#ifndef RADIO_CH
-#define RADIO_CH 5
-#endif
-
-// MQTT parameters
-#ifndef BROKER_PORT
-#define BROKER_PORT 1883
-#endif
-#ifndef BROKER_USER
-#define BROKER_USER "mqtt user"
-#endif
-#ifndef BROKER_PASS
-#define BROKER_PASS "mqtt password"
-#endif
-
-// Harmony parameters
-#ifndef DEVICE_NAME
-#define DEVICE_NAME "Harmony OpenHub"
-#endif
-#ifndef CLICK_DURATION
-#define CLICK_DURATION 500
-#endif
-#ifndef WAIT_DURATION
-#define WAIT_DURATION 200
-#endif
-#ifndef SECOND_REPEAT_DURATION
-#define SECOND_REPEAT_DURATION 1000
-#endif
-#ifndef FURTHER_REPEAT_DURATION
-#define FURTHER_REPEAT_DURATION 250
-#endif
 
 typedef struct {
   uint32_t id;
@@ -81,58 +55,58 @@ typedef struct {
 } harmony_command_t;
 
 harmony_command_t harmony_command_list[] = 
- {{0x005800C1,0,"ok"},
-  {0x005200C1,1,"up"},
-  {0x05100C1,1,"down"},
-  {0x005000C1,1,"left"},
-  {0x004F00C1,1,"right"},
-  {0x0000E9C3,1,"volume_up"},
-  {0x0000EAC3,1,"volume_down"},
-  {0x00009CC3,1,"channel_up"},
-  {0x00009DC3,1,"channel_down"},
-  {0x0000E2C3,0,"mute"},
-  {0x000224C3,0,"return"},
-  {0x000094C3,0,"exit"},
-  {0x006500C1,0,"menu"},
-  {0x00009AC3,0,"dvr"},
-  {0x00008DC3,0,"guide"},
-  {0x0001FFC3,0,"info"},
-  {0x0001F7C3,0,"red"},
-  {0x0001F6C3,0,"green"},
-  {0x0001F5C3,0,"yellow"},
-  {0x0001F4C3,0,"blue"},
-  {0x0000B4C3,1,"backward"},
-  {0x0000B3C3,1,"forward"},
-  {0x0000B0C3,0,"play"},
-  {0x0000B1C3,0,"pause"},
-  {0x0000B7C3,0,"stop"},
-  {0x0000B2C3,0,"rec"},
-  {0x0001E8C3,2,"music"},
-  {0x0001EDC3,2,"tv"},
-  {0x0001E9C3,2,"movie"},
-  {0x0001ECC3,2,"off"},
-  {0x001E00C1,0,"number1"},
-  {0x001F00C1,0,"number2"},
-  {0x002000C1,0,"number3"},
-  {0x002100C1,0,"number4"},
-  {0x002200C1,0,"number5"},
-  {0x002300C1,0,"number6"},
-  {0x002400C1,0,"number7"},
-  {0x002500C1,0,"number8"},
-  {0x002600C1,0,"number9"},
-  {0x002700C1,0,"number0"},
-  {0x005600C1,0,"dotdot"},
-  {0x002800C1,0,"dote"},
-  {0x000FF2C3,0,"light1"},
-  {0x000FF3C3,0,"light2"},
-  {0x000FF4C3,0,"socket1"},
-  {0x000FF5C3,0,"socket2"},
-  {0x000FF0C3,0,"plus"},
-  {0x000FF1C3,0,"minus"},
+ {{0x005800C1,OK,"ok"},
+  {0x005200C1,UP,"up"},
+  {0x05100C1,DOWN,"down"},
+  {0x005000C1,LEFT,"left"},
+  {0x004F00C1,RIGHT,"right"},
+  {0x0000E9C3,VOL_UP,"volume_up"},
+  {0x0000EAC3,VOL_DOWN,"volume_down"},
+  {0x00009CC3,CH_UP,"channel_up"},
+  {0x00009DC3,CH_DOWN,"channel_down"},
+  {0x0000E2C3,MUTE,"mute"},
+  {0x000224C3,RETURN,"return"},
+  {0x000094C3,EXIT,"exit"},
+  {0x006500C1,MENU,"menu"},
+  {0x00009AC3,DVR,"dvr"},
+  {0x00008DC3,GUIDE,"guide"},
+  {0x0001FFC3,INFO,"info"},
+  {0x0001F7C3,RED,"red"},
+  {0x0001F6C3,GREEN,"green"},
+  {0x0001F5C3,YELLOW,"yellow"},
+  {0x0001F4C3,BLUE,"blue"},
+  {0x0000B4C3,BACKWARD,"backward"},
+  {0x0000B3C3,FORWARD,"forward"},
+  {0x0000B0C3,PLAY,"play"},
+  {0x0000B1C3,PAUSE,"pause"},
+  {0x0000B7C3,STOP,"stop"},
+  {0x0000B2C3,REC,"rec"},
+  {0x0001E8C3,MUSIC,"music"},
+  {0x0001EDC3,TV,"tv"},
+  {0x0001E9C3,MOVIE,"movie"},
+  {0x0001ECC3,OFF,"off"},
+  {0x001E00C1,NUM1,"number1"},
+  {0x001F00C1,NUM2,"number2"},
+  {0x002000C1,NUM3,"number3"},
+  {0x002100C1,NUM4,"number4"},
+  {0x002200C1,NUM5,"number5"},
+  {0x002300C1,NUM6,"number6"},
+  {0x002400C1,NUM7,"number7"},
+  {0x002500C1,NUM8,"number8"},
+  {0x002600C1,NUM9,"number9"},
+  {0x002700C1,NUM0,"number0"},
+  {0x005600C1,DOTDOT,"dotdot"},
+  {0x002800C1,DOTE,"dote"},
+  {0x000FF2C3,LIGHT1,"light1"},
+  {0x000FF3C3,LIGHT2,"light2"},
+  {0x000FF4C3,SOCKET1,"socket1"},
+  {0x000FF5C3,SOCKET2,"socket2"},
+  {0x000FF0C3,PLUS,"plus"},
+  {0x000FF1C3,MINUS,"minus"},
   {0,0,"null"}};
 
 // Ethernet and Home Assistant mqtt clients
-NetworkClient CLIENT;
+NETWORKCLIENT;
 HADevice DEVICE;
 HAMqtt MQTT(CLIENT, DEVICE);
 unsigned long SHORT_LAST_UPDATE_AT = 0;
@@ -184,15 +158,25 @@ void setup() {
 
 void setup_network() {
   delay(10);
-  ETH.begin(ETH_PHY_RTL8201, 0, 16, 17, -1, ETH_CLOCK_GPIO0_IN);
-  ETH.macAddress(MAC);
-  sprintf(MAC_CHAR, "%2X:%2X:%2X:%2X:%2X:%2X", MAC[0], MAC[1], MAC[2], MAC[3], MAC[4], MAC[5]);
   Serial.println("");
-  if ( ETH.linkUp() ) {
-    Serial.println("Connected to network");
+  if (USE_WIRED) {
+    CONNECT;
+    if ( NETWORKUP ) {
+      Serial.println("Connected to network");
+    } else {
+      Serial.println("NOT connected to network");
+    }
   } else {
-    Serial.println("NOT connected to network");
+      Serial.print("Connecting to ");
+      Serial.println(SECRET_SSID);
+      CONNECT;
+      while ( !(NETWORKUP) ) {
+        delay(500);
+        Serial.print(".");
+      }
   }
+  GETMAC;
+  sprintf(MAC_CHAR, "%2X:%2X:%2X:%2X:%2X:%2X", MAC[0], MAC[1], MAC[2], MAC[3], MAC[4], MAC[5]);
   Serial.print("Mac Address: ");
   Serial.println(MAC_CHAR);
 }
@@ -265,7 +249,6 @@ get_harmony_command(uint32_t id) {
   return harmony_default_command;
 
 }
-
 
 void loop() {
   MQTT.loop();
