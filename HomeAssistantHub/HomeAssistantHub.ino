@@ -109,19 +109,16 @@ HAMqtt MQTT(CLIENT, DEVICE);
 unsigned long SHORT_LAST_UPDATE_AT = 0;
 unsigned long LONG_LAST_UPDATE_AT = 0;
 char mqtt_payload[50];
-char UPTIME_CHAR[40];
-char MAC_CHAR[18];
-char IP_CHAR[15];
-char RADIO_STATUS_CHAR[6];
+char UPTIME_CHAR[100];
+char RADIO_STATUS_CHAR[100];
+char MAC_CHAR[100];
 bool FIRSTPRESS = true;
-bool FIRSTRUN = true;
 bool RADIOACTIVE = false;
 byte MAC[6];
 HASensor KEY_PRESS("key_press");
 HASensor UPTIME("uptime");
-HASensor MAC_ADDRESS("mac_address");
-HASensor IP_ADDRESS("ip_address");
 HASensor RADIO_STATUS("radio_active");
+HASensor MAC_ADDRESS("mac_address");
 
 // nRF24L01+ radio
 RF24 radio(CE_PIN, CSN_PIN);
@@ -158,7 +155,6 @@ void setup() {
 
 void setup_homeAssistant() {
  // setup HA device
-  Serial.println(MAC_CHAR);
   DEVICE.setUniqueId(MAC, sizeof(MAC));
   DEVICE.setName(DEVICE_NAME);
   DEVICE.setSoftwareVersion(SOFTWARE_VERSION);
@@ -179,16 +175,9 @@ void setup_homeAssistant() {
   MAC_ADDRESS.setName("MAC Address");
   MAC_ADDRESS.setIcon("mdi:ethernet");
   MAC_ADDRESS.setEntityCategory("diagnostic");
-  MAC_ADDRESS.setName("IP Address");
-  MAC_ADDRESS.setIcon("mdi:network-outline");
-  MAC_ADDRESS.setEntityCategory("diagnostic");
-  IP_ADDRESS.setName("MAC Address");
-  IP_ADDRESS.setIcon("mdi:ethernet");
-  IP_ADDRESS.setEntityCategory("diagnostic");
   RADIO_STATUS.setName("Radio Status");
   RADIO_STATUS.setIcon("mdi:radio-tower");
   RADIO_STATUS.setEntityCategory("diagnostic");
-  
  // start MQTT connection
   Serial.print("Starting connection to MQTT broker at ");
   Serial.println(BROKER_ADDR);
@@ -201,11 +190,11 @@ void setup_nRF24() {
   RADIOACTIVE = radio.begin(&SPI);
   if( !RADIOACTIVE ) {
     Serial.println("nRF24L01+ Radio hardware not responding");
-    RADIO_STATUS_CHAR = "off";
+    sprintf(RADIO_STATUS_CHAR,"off");
   } else {
     Serial.println("nRF24L01+ Radio hardware started");
     RADIOACTIVE = true;
-    RADIO_STATUS_CHAR = "active";
+    sprintf(RADIO_STATUS_CHAR,"active");
     // nRF24L01+ radio settings (fixed to match Harmony remotes)
     radio.setChannel(channel);
     radio.setDataRate(RF24_2MBPS);
@@ -223,13 +212,14 @@ void setup_network() {
   ETH.begin(ETH_PHY_RTL8201, 0, 16, 17, -1, ETH_CLOCK_GPIO0_IN);
   ETH.macAddress(MAC);
   sprintf(MAC_CHAR, "%2X:%2X:%2X:%2X:%2X:%2X", MAC[0], MAC[1], MAC[2], MAC[3], MAC[4], MAC[5]);
-  IP_CHAR = ETH.localIP().toString().c_str();
   Serial.println("");
-  Serial.println("Connected to network");
-  Serial.print("MAC Address: ");
+  if ( ETH.linkUp() ) {
+    Serial.println("Connected to network");
+  } else {
+    Serial.println("NOT connected to network");
+  }
+  Serial.print("Mac Address: ");
   Serial.println(MAC_CHAR);
-  Serial.print("IP address: ");
-  Serial.println(IP_CHAR);
 }
 
 harmony_command_t
@@ -249,13 +239,6 @@ get_harmony_command(uint32_t id) {
 
 void loop() {
   MQTT.loop();
-
-  if (FIRSTRUN) {
-    MAC_ADDRESS.setValue(MAC_CHAR);
-    IP_ADDRESS.setValue(IP_CHAR);
-    RADIO_STATUS.setValue(RADIO_STATUS_CHAR);
-    FIRSTRUN = false;
-  };
 
   uint8_t pipeNum;
   if ( radio.available(&pipeNum) and RADIOACTIVE ) {
@@ -395,6 +378,13 @@ void loop() {
       sprintf(UPTIME_CHAR, "%ds", seconds);
     }
     UPTIME.setValue(UPTIME_CHAR);
+    MAC_ADDRESS.setValue(MAC_CHAR);
+    RADIO_STATUS.setValue(RADIO_STATUS_CHAR);
     SHORT_LAST_UPDATE_AT = millis();
   }
+
+  if ((millis() - LONG_LAST_UPDATE_AT) > 60000) { // update in 60s interval
+    LONG_LAST_UPDATE_AT = millis();
+  }
+
 }
