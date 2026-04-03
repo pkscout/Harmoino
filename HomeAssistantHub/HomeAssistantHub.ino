@@ -1,18 +1,29 @@
-//  Home Assistant Harmony hub for ESP32 or similar (WiFi capable boards)
+//  Home Assistant Harmony hub for ESP32 or similar
 //  The purpose of the hub is to receive Harmony remote commands via nRF24L01+
-//  and to format these and pass them on over mqtt to Home Assistant
+//  and to format these and pass them on over MQTT to Home Assistant
 
-// arduino_secrets.h needs to contain #define statements for
-// CE - the pin number for the CE connection to the radio
-// CSN - the pin number for the CSN connection to the radio
-// RADIO_ADR - the Harmony remote address you got from the NetworkAddress sketch
-// RADIO_CH - the channel you want to use to listen for remotes (5 is probably fine)
-// BROKER_ADDR - the IP address of the broker in the format IPAddress(127,0,0,1)
-// BROKER_USER - the MQTT username (you can put anything here if you're not using auth on MQTT)
-// BROKER_PASS - the MQTT password (you can put anything here if you're not using auth on MQTT)
-// DEVICE_NAME - the name of the remote
+// arduino_secrets.h MUST contain the following #define statements
+// REMOTE_ADR - the Harmony remote address you got from the NetworkAddress sketch in format 0xF305984508
+// BROKER_ADDR - the IP address of the MQTT broker in format IPAddress(127,0,0,1)
 
-#define SOFTWARE_VERSION "1.1.0"
+// arduino_secrets.h CAN contain the following #define statements to override defaults
+// CE - the pin number or name for the CE connection to the radio (default 2)
+// CSN - the pin number or name for the CSN connection to the radio (default 4)
+// RADIO_CH - the channel to listen for remotes, Choose 5 (default),8,14,17,32,35,41,44,62,65,71 or 74
+// DEVICE_NAME - the name of the remote (default Harmony OpenHub)
+// CLICK_DURATION - maximal duration of a click in ms, and minimal duration for a long press (default 500)
+// WAIT_DURATION - time in ms to wait after a click to register additional clicks (default 200)
+// SECOND_REPEAT_DURATION - time in ms to start repeating inputs for type 1 command (defaullt 1000)
+// FURTHER_REPEAT_DURATION - time in ms between subsequent repeated inputs for type 1 commands (default 250)
+// BROKER_USER - if you are using MQTT auth, the MQTT username
+// BROKER_PASS - if you are using MQTT auth the MQTT password
+// Harmony commands
+// Type 0 : Only accept single clicks separated nu button releases (most responsive)
+// Type 1 : Generated repeated clicks when button is held 
+// Type 2 : Registers single clicks, double clicks, multiple clicks (three or more), or long presses
+
+
+#define SOFTWARE_VERSION "1.1.1"
 #define MANUFACTURER "pkscout"
 #define MODEL "Harmony Companion OpenHub"
 #define CONFIGURL "https://github.com/pkscout/Harmoino"
@@ -24,24 +35,44 @@
 #include <ArduinoHA.h>
 #include "arduino_secrets.h"
 
-// nRF24L01+ SPI parameters
-#define CE_PIN  CE
-#define CSN_PIN CSN
+// nRF24L01+ parameters
+#ifndef CE_PIN
+#define CE_PIN 2
+#endif
+#ifndef CSN_PIN
+#define CSN_PIN 4
+#endif
+#ifndef RADIO_CH
+#define RADIO_CH 5
+#endif
 
-// Harmony RF24 network and radio parameters
-const uint64_t address = RADIO_ADR; // Unique remote RF24 address. Use NetworkAddress script to find it
-const uint8_t channel = RADIO_CH; // Choose 5,8,14,17,32,35,41,44,62,65,71 or 74. Any one should work
+// MQTT parameters
+#ifndef BROKER_PORT
+#define BROKER_PORT 1883
+#endif
+#ifndef BROKER_USER
+#define BROKER_USER "mqtt user"
+#endif
+#ifndef BROKER_PASS
+#define BROKER_PASS "mqtt password"
+#endif
 
-// Settings for input functions (in ms)
-const long harmony_click_duration = 500; // Maximal duration of a click, and minimal duration for a long press
-const long harmony_wait_duration = 200; // Time to wait after a click to register additional clicks
-const long harmony_second_repeat_duration = 1000; // Time to start repeating inputs for type 1 command
-const long harmony_further_repeat_duration = 250; // Time between subsequent repeated inputs for type 1 commands
-
-// Harmony commands
-// Type 0 : Only accept single clicks separated nu button releases (most responsive)
-// Type 1 : Generated repeated clicks when button is held 
-// Type 2 : Registers single clicks, double clicks, multiple clicks (three or more), or long presses
+// Harmony parameters
+#ifndef DEVICE_NAME
+#define DEVICE_NAME "Harmony OpenHub"
+#endif
+#ifndef CLICK_DURATION
+#define CLICK_DURATION 500
+#endif
+#ifndef WAIT_DURATION
+#define WAIT_DURATION 200
+#endif
+#ifndef SECOND_REPEAT_DURATION
+#define SECOND_REPEAT_DURATION 1000
+#endif
+#ifndef FURTHER_REPEAT_DURATION
+#define FURTHER_REPEAT_DURATION 250
+#endif
 
 typedef struct {
   uint32_t id;
@@ -100,8 +131,6 @@ harmony_command_t harmony_command_list[] =
   {0x000FF1C3,0,"minus"},
   {0,0,"null"}};
 
-// End of user configurable parameters
-
 // Ethernet and Home Assistant mqtt clients
 NetworkClient CLIENT;
 HADevice DEVICE;
@@ -153,6 +182,43 @@ void setup() {
   setup_homeAssistant();
 }
 
+void setup_network() {
+  delay(10);
+  ETH.begin(ETH_PHY_RTL8201, 0, 16, 17, -1, ETH_CLOCK_GPIO0_IN);
+  ETH.macAddress(MAC);
+  sprintf(MAC_CHAR, "%2X:%2X:%2X:%2X:%2X:%2X", MAC[0], MAC[1], MAC[2], MAC[3], MAC[4], MAC[5]);
+  Serial.println("");
+  if ( ETH.linkUp() ) {
+    Serial.println("Connected to network");
+  } else {
+    Serial.println("NOT connected to network");
+  }
+  Serial.print("Mac Address: ");
+  Serial.println(MAC_CHAR);
+}
+
+void setup_nRF24() {
+  SPI.begin();
+  RADIOACTIVE = radio.begin(&SPI);
+  if( !RADIOACTIVE ) {
+    Serial.println("nRF24L01+ Radio hardware not responding");
+    sprintf(RADIO_STATUS_CHAR,"off");
+  } else {
+    Serial.println("nRF24L01+ Radio hardware started");
+    RADIOACTIVE = true;
+    sprintf(RADIO_STATUS_CHAR,"active");
+    // nRF24L01+ radio settings (fixed to match Harmony remotes)
+    radio.setChannel(RADIO_CH);
+    radio.setDataRate(RF24_2MBPS);
+    radio.enableDynamicPayloads();
+    radio.setCRCLength (RF24_CRC_16);
+    radio.openReadingPipe(1, REMOTE_ADR & 0xFFFFFFFF00);
+    radio.openReadingPipe(2, REMOTE_ADR & 0xFFFFFFFFFF);
+    radio.startListening();
+    Serial.println("nRF24L01+ Radio hardware configured");
+  }
+}
+
 void setup_homeAssistant() {
  // setup HA device
   DEVICE.setUniqueId(MAC, sizeof(MAC));
@@ -185,43 +251,6 @@ void setup_homeAssistant() {
  
 }
 
-void setup_nRF24() {
-  SPI.begin();
-  RADIOACTIVE = radio.begin(&SPI);
-  if( !RADIOACTIVE ) {
-    Serial.println("nRF24L01+ Radio hardware not responding");
-    sprintf(RADIO_STATUS_CHAR,"off");
-  } else {
-    Serial.println("nRF24L01+ Radio hardware started");
-    RADIOACTIVE = true;
-    sprintf(RADIO_STATUS_CHAR,"active");
-    // nRF24L01+ radio settings (fixed to match Harmony remotes)
-    radio.setChannel(channel);
-    radio.setDataRate(RF24_2MBPS);
-    radio.enableDynamicPayloads();
-    radio.setCRCLength (RF24_CRC_16);
-    radio.openReadingPipe(1, address & 0xFFFFFFFF00);
-    radio.openReadingPipe(2, address & 0xFFFFFFFFFF);
-    radio.startListening();
-    Serial.println("nRF24L01+ Radio hardware configured");
-  }
-}
-
-void setup_network() {
-  delay(10);
-  ETH.begin(ETH_PHY_RTL8201, 0, 16, 17, -1, ETH_CLOCK_GPIO0_IN);
-  ETH.macAddress(MAC);
-  sprintf(MAC_CHAR, "%2X:%2X:%2X:%2X:%2X:%2X", MAC[0], MAC[1], MAC[2], MAC[3], MAC[4], MAC[5]);
-  Serial.println("");
-  if ( ETH.linkUp() ) {
-    Serial.println("Connected to network");
-  } else {
-    Serial.println("NOT connected to network");
-  }
-  Serial.print("Mac Address: ");
-  Serial.println(MAC_CHAR);
-}
-
 harmony_command_t
 get_harmony_command(uint32_t id) {
   int i = 0;
@@ -237,11 +266,12 @@ get_harmony_command(uint32_t id) {
 
 }
 
+
 void loop() {
   MQTT.loop();
 
   uint8_t pipeNum;
-  if ( radio.available(&pipeNum) and RADIOACTIVE ) {
+  if ( radio.available(&pipeNum) ) {
       // Read packet
       uint8_t dataReceived[32];
       int payloadSize = radio.getDynamicPayloadSize();
@@ -304,12 +334,12 @@ void loop() {
       }
       if(harmony_current_command.type == 1) {
         if(harmony_repeat_counter == 2) { // Second press comes after some delay
-          if(now > harmony_repeat_time + harmony_second_repeat_duration) {
+          if(now > harmony_repeat_time + SECOND_REPEAT_DURATION) {
             publish = true;
           }
         }
         if(harmony_repeat_counter > 2) {// Second press comes after some delay
-          if(now > harmony_repeat_time + harmony_further_repeat_duration) {
+          if(now > harmony_repeat_time + FURTHER_REPEAT_DURATION) {
             publish = true;
           }
         }
@@ -324,9 +354,9 @@ void loop() {
     }
 
     if(harmony_current_command.type == 2) { // Complex button with click, double, multiple, long button
-      if(((harmony_release_time > harmony_press_time) && (now > harmony_release_time + harmony_wait_duration)) ||
-          (now > harmony_press_time + harmony_click_duration)) { // The button was pressed and released, or held for long
-        if(harmony_release_time - harmony_press_time < harmony_click_duration) { // Click
+      if(((harmony_release_time > harmony_press_time) && (now > harmony_release_time + WAIT_DURATION)) ||
+          (now > harmony_press_time + CLICK_DURATION)) { // The button was pressed and released, or held for long
+        if(harmony_release_time - harmony_press_time < CLICK_DURATION) { // Click
           if(harmony_press_counter == 1) {
             sprintf(mqtt_payload,"%s_clicked",harmony_current_command.name);
           }
@@ -349,9 +379,9 @@ void loop() {
   }
 
   // Harmony timeout logic to reset state in case of lost packets
-  if((now > harmony_press_time + harmony_wait_duration) &&
-     (now > harmony_release_time + harmony_wait_duration) &&
-     (now > harmony_hold_time + harmony_wait_duration)) {
+  if((now > harmony_press_time + WAIT_DURATION) &&
+     (now > harmony_release_time + WAIT_DURATION) &&
+     (now > harmony_hold_time + WAIT_DURATION)) {
      // Reset states
      harmony_press_counter = 0;
      harmony_repeat_counter = 0;
