@@ -23,7 +23,7 @@
 // Type 2 : Registers single clicks, double clicks, multiple clicks (three or more), or long presses
 
 
-#define SOFTWARE_VERSION "1.1.2"
+#define SOFTWARE_VERSION "2.0.0"
 #define MANUFACTURER "pkscout"
 #define MODEL "Harmony Companion OpenHub"
 #define CONFIGURL "https://github.com/pkscout/Harmoino"
