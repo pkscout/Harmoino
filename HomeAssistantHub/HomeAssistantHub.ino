@@ -4,8 +4,6 @@
 
 // arduino_secrets.h MUST contain the following #define statements
 // BROKER_ADDR - the IP address of the MQTT broker in format IPAddress(127,0,0,1)
-// REMOTE_ADR - the Harmony remote address you got during the discovery process in format 0xF305984508
-//   note that without REMOTE_ADR the device will boot into discovery mode so you can get the remote address
 // By default, USE_WIRED is false (see below), so, you must also have the WiFi credentials, not needed if USE_WIRED is true
 //   SECRET_SSID - the SSID of the wireless network to which you want to connect
 //   SECRET_PASS - the password for the wireless network to which you want to connect
@@ -23,6 +21,10 @@
 // FURTHER_REPEAT_DURATION - time in ms between subsequent repeated inputs for type 1 commands (default 250)
 // BROKER_USER - if you are using MQTT auth, the MQTT username
 // BROKER_PASS - if you are using MQTT auth the MQTT password
+// REMOTE_ADR - the Harmony remote address for your remote in the format 0xF305984508
+//   You only need this if you are trying to manually load a remote address because you don't have the hub anymore.
+//   Once you reload the sketch with this, you can use the Migrate button in the HA device to save the remote address
+//   to flash.  After that you can remove this and reload the sketch one more time.
 // Harmony commands
 //   Type 0 : Only accept single clicks separated nu button releases (most responsive)
 //   Type 1 : Generated repeated clicks when button is held 
@@ -83,6 +85,11 @@
 
 #include "arduino_secrets.h"
 #include "defaults.h"
+#include <SPI.h>
+#include <nRF24L01.h>
+#include <RF24.h>
+#include <ArduinoHA.h>
+#include <Preferences.h>
 #if USE_WIRED
 #include <ETH.h>
 #define CONNECT ETH.begin(ETH_PHY_RTL8201, 0, 16, 17, -1, ETH_CLOCK_GPIO0_IN)
@@ -100,14 +107,10 @@
 #define GET_LOCALIP WiFi.localIP()
 #define GET_WIFI_RSSI WiFi.RSSI()
 #endif
-#include <SPI.h>
-#include <nRF24L01.h>
-#include <RF24.h>
-#include <ArduinoHA.h>
-#include <Preferences.h>
 
+Preferences prefs;
 uint64_t ADDRESS = 0;
-char ADDRESS_CHAR[100];
+char ADDRESS_CHAR[50];
 
 typedef struct {
   uint32_t id;
@@ -166,7 +169,7 @@ harmony_command_t harmony_command_list[] =
   {0x000FF1C3,MINUS,"minus"},
   {0,0,"null"}};
 
-// Ethernet and Home Assistant mqtt clients
+// Network and Home Assistant mqtt clients
 NETWORKCLIENT;
 HADevice DEVICE;
 HAMqtt MQTT(CLIENT, DEVICE);
@@ -175,7 +178,6 @@ unsigned long LONG_LAST_UPDATE_AT = 0;
 char mqtt_payload[50];
 char UPTIME_CHAR[50];
 char MAC_CHAR[50];
-char INSTRUCTIONS_CHAR[250];
 char IP_CHAR[20];
 char RSSI_CHAR[50];
 bool FIRSTPRESS = true;
@@ -187,10 +189,11 @@ HASensor UPTIME("uptime");
 HASensor MAC_ADDRESS("mac_address");
 HASensor IP_ADDRESS("ip_address");
 HASensor WIFI_RSSI("wifi_rssi");
-HASensor INSTRUCTIONS("instructions");
 HASensor REMOTE_ADDRESS("remote_address");
 HABinarySensor RADIO_STATUS("radio_status");
 HAButton REBOOT_DEVICE("reboot_device");
+HAButton RESET_DEVICE("reset_device");
+HAButton MIGRATE_ADDRESS("migrate_address");
 
 // nRF24L01+ radio
 RF24 radio(CE_PIN, CSN_PIN);
@@ -210,8 +213,7 @@ const byte pairMessage[22] = {242,95,1,225,154,157,218,83,40,64,30,4,2,7,12,0,0,
 const byte pingMessage[5] = {242,64,1,225,236};
 int pingRetries = 0;
 
-
-// Harmont logic messages
+// Harmony logic messages
 const uint32_t harmony_hold = 0x98280040;
 const uint32_t harmony_ping = 0x704C0440;
 const uint32_t harmony_sleep = 0x0000034F;
@@ -240,17 +242,16 @@ void setup() {
 }
 
 void setup_preferences() {
-  if (REMOTE_ADR) {
-    ADDRESS = REMOTE_ADR;
+  prefs.begin("harmonio", false);
+  ADDRESS = prefs.getULong64("remote_address", 0);
+  if (ADDRESS) {
     sprintf(ADDRESS_CHAR, "0x%llX", ADDRESS);
-    sprintf(INSTRUCTIONS_CHAR, "enjoy!");
     Serial.print("The remote address is ");
     Serial.println(ADDRESS_CHAR);
   } else {
     sprintf(ADDRESS_CHAR, "none");
     Serial.println("No remote address, triggering initial setup");
   }
-
 }
 
 void setup_network() {
@@ -311,8 +312,7 @@ void setup_nRF24() {
       radio.enableAckPayload();
       radio.setCRCLength (RF24_CRC_16);
       radio.openWritingPipe(pair_address);
-      sprintf(INSTRUCTIONS_CHAR, "Power on the Harmony Smart Hub and press the pair/reset button");
-      Serial.println(INSTRUCTIONS_CHAR);
+      Serial.println("Power on the Harmony Smart Hub and press the pair/reset button");
     }
   }
 }
@@ -355,16 +355,21 @@ void setup_homeAssistant() {
   RADIO_STATUS.setName("Radio Status");
   RADIO_STATUS.setIcon("mdi:radio-tower");
   RADIO_STATUS.setEntityCategory("diagnostic");
-  INSTRUCTIONS.setName("Instructions");
-  INSTRUCTIONS.setIcon("mdi:file-document-outline");
-  INSTRUCTIONS.setEntityCategory("diagnostic");
   REMOTE_ADDRESS.setName("Remote Address");
   REMOTE_ADDRESS.setIcon("mdi:remote");
   REMOTE_ADDRESS.setEntityCategory("diagnostic");
   REBOOT_DEVICE.setName("Reboot");
   REBOOT_DEVICE.setIcon("mdi:restart");
-  REBOOT_DEVICE.setEntityCategory("diagnostic");
+  REBOOT_DEVICE.setEntityCategory("config");
   REBOOT_DEVICE.onCommand(onButtonCommand);
+  RESET_DEVICE.setName("Reset");
+  RESET_DEVICE.setIcon("mdi:refresh");
+  RESET_DEVICE.setEntityCategory("config");
+  RESET_DEVICE.onCommand(onButtonCommand);
+  MIGRATE_ADDRESS.setName("Migrate");
+  MIGRATE_ADDRESS.setIcon("mdi:file-move-outline");
+  MIGRATE_ADDRESS.setEntityCategory("config");
+  MIGRATE_ADDRESS.onCommand(onButtonCommand);
   // start MQTT connection
   Serial.print("Starting connection to MQTT broker at ");
   Serial.println(BROKER_ADDR);
@@ -375,7 +380,44 @@ void onButtonCommand(HAButton* sender) {
   if (sender == &REBOOT_DEVICE) {
     Serial.println("rebooting device");
     ESP.restart();
+  } else if (sender == &RESET_DEVICE) {
+    prefs.remove("remote_address");
+    Serial.print("resetting device");
+    while (prefs.getULong64("remote_address", 0)) {
+      Serial.print(".");
+      delay(100);
+    }
+    Serial.println("");
+    Serial.println("rebooting device");
+    ESP.restart();
+  } else if (sender == &MIGRATE_ADDRESS){
+    if (REMOTE_ADR){
+      Serial.println("migrating the remote address from ardunio_secrets.h to flash");
+      sprintf(ADDRESS_CHAR, "0x%llX", REMOTE_ADR);
+      save_preference();
+      restart_device();
+    } else {
+      Serial.println("no remote address in ardunio_secrets.h to migrate");
+    }
   }
+}
+
+void save_preference() {
+  Serial.print("The remote RF24 address is: ");
+  Serial.println(ADDRESS_CHAR);
+  REMOTE_ADDRESS.setValue(ADDRESS_CHAR);
+  prefs.putULong64("remote_address", strtoull(ADDRESS_CHAR, nullptr, 16));
+  Serial.print("saving preference");
+  while (!prefs.getULong64("remote_address", 0)) {
+    Serial.print(".");
+    delay(100);
+  }
+  Serial.println("");
+}
+
+void restart_device() {
+  Serial.println("rebooting device");
+  ESP.restart();
 }
 
 void initial_setup() {
@@ -409,13 +451,8 @@ void initial_setup() {
               strcat(ADDRESS_CHAR, tmp);
           }
           Serial.println("");
-          Serial.print("The remote RF24 address is: ");
-          Serial.println(ADDRESS_CHAR);
-          REMOTE_ADDRESS.setValue(ADDRESS_CHAR);
-          sprintf(INSTRUCTIONS_CHAR, "put remote address in #define REMOTE_ADR in ardunio_secrets.h and reload sketch");
-          Serial.println(INSTRUCTIONS_CHAR);
-          INSTRUCTIONS.setValue(INSTRUCTIONS_CHAR);
-          GOT_ADDRESS = true;
+          save_preference();
+          restart_device();
       }      
   }
 }
@@ -429,7 +466,6 @@ void regular_run() {
       radio.read(&dataReceived,payloadSize);
       if (pipeNum > 0){
         RADIOACTIVE = true;
-        sprintf(INSTRUCTIONS_CHAR, "enjoy!");
         // Print contents of nRF25L01+ packet
         Serial.print("nRF24L01 received 0x");
         for(int i=0; i<payloadSize; i++) {
@@ -444,8 +480,7 @@ void regular_run() {
         Serial.print(pipeNum);
         Serial.println(")");
       } else if (RADIOACTIVE) {
-        sprintf(INSTRUCTIONS_CHAR, "Radio has gone offline. Check connections, then reboot");
-        Serial.println(INSTRUCTIONS_CHAR);
+        Serial.println("Radio has gone offline. Check connections, then reboot");
         RADIOACTIVE = false;
       }
 
@@ -587,7 +622,7 @@ void loop() {
     }
     UPTIME.setValue(UPTIME_CHAR);
     RADIO_STATUS.setState(RADIOACTIVE);
-    INSTRUCTIONS.setValue(INSTRUCTIONS_CHAR);
+    REMOTE_ADDRESS.setValue(ADDRESS_CHAR);
     SHORT_LAST_UPDATE_AT = millis();
   }
 
@@ -595,7 +630,6 @@ void loop() {
     LONG_LAST_UPDATE_AT = millis();
     MAC_ADDRESS.setValue(MAC_CHAR);
     IP_ADDRESS.setValue(IP_CHAR);
-    REMOTE_ADDRESS.setValue(ADDRESS_CHAR);
     if (!USE_WIRED){
       sprintf(RSSI_CHAR, "%d", GET_WIFI_RSSI);
     }
