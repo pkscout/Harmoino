@@ -1,13 +1,18 @@
-//  Home Assistant Harmony hub for ESP32 or similar
+//  Home Assistant Harmony hub for ESP32
 //  The purpose of the hub is to receive Harmony remote commands via nRF24L01+
 //  and to format these and pass them on over MQTT to Home Assistant
 
 // arduino_secrets.h MUST contain the following #define statements
-// REMOTE_ADR - the Harmony remote address you got from the NetworkAddress sketch in format 0xF305984508
 // BROKER_ADDR - the IP address of the MQTT broker in format IPAddress(127,0,0,1)
+// REMOTE_ADR - the Harmony remote address you got during the discovery process in format 0xF305984508
+//   note that without REMOTE_ADR the device will boot into discovery mode so you can get the remote address
+// By default, USE_WIRED is false (see below), so, you must also have the WiFi credentials, not needed if USE_WIRED is true
+//   SECRET_SSID - the SSID of the wireless network to which you want to connect
+//   SECRET_PASS - the password for the wireless network to which you want to connect
 
 // arduino_secrets.h CAN contain the following #define statements to override defaults
-// USE_WIRED - whether to use wired network config (default true)
+// USE_WIRED - whether to use wired network config (default false)
+//   this only supports RTL8201 based LAN devices
 // CE - the pin number or name for the CE connection to the radio (default 2)
 // CSN - the pin number or name for the CSN connection to the radio (default 4)
 // RADIO_CH - the channel to listen for remotes, Choose 5 (default),8,14,17,32,35,41,44,62,65,71 or 74
@@ -19,9 +24,9 @@
 // BROKER_USER - if you are using MQTT auth, the MQTT username
 // BROKER_PASS - if you are using MQTT auth the MQTT password
 // Harmony commands
-// Type 0 : Only accept single clicks separated nu button releases (most responsive)
-// Type 1 : Generated repeated clicks when button is held 
-// Type 2 : Registers single clicks, double clicks, multiple clicks (three or more), or long presses
+//   Type 0 : Only accept single clicks separated nu button releases (most responsive)
+//   Type 1 : Generated repeated clicks when button is held 
+//   Type 2 : Registers single clicks, double clicks, multiple clicks (three or more), or long presses
 // OK - key press (default 0)
 // UP - key press (default 1)
 // DOWN - key press (default 1)
@@ -71,7 +76,7 @@
 // PLUS - key press (default 0)
 // MINUS - key press (default 0)
 
-#define SOFTWARE_VERSION "2.1.0"
+#define SOFTWARE_VERSION "2.3.0"
 #define MANUFACTURER "pkscout"
 #define MODEL "Harmony Companion OpenHub"
 #define CONFIGURL "https://github.com/pkscout/Harmoino"
@@ -81,20 +86,28 @@
 #if USE_WIRED
 #include <ETH.h>
 #define CONNECT ETH.begin(ETH_PHY_RTL8201, 0, 16, 17, -1, ETH_CLOCK_GPIO0_IN)
-#define GETMAC ETH.macAddress(MAC)
-#define NETWORKUP ETH.linkUp()
+#define GET_MAC ETH.macAddress(MAC)
+#define NETWORKDOWN ETH.localIP() == IPAddress(0, 0, 0, 0)
 #define NETWORKCLIENT NetworkClient CLIENT
+#define GET_LOCALIP ETH.localIP()
+#define GET_WIFI_RSSI ETH.speed()
 #else
 #include <WiFi.h>
 #define CONNECT WiFi.begin(SECRET_SSID, SECRET_PASS)
-#define GETMAC WiFi.macAddress(MAC)
-#define NETWORKUP WiFi.status() == WL_CONNECTED
+#define GET_MAC WiFi.macAddress(MAC)
+#define NETWORKDOWN WiFi.status() != WL_CONNECTED
 #define NETWORKCLIENT WiFiClient CLIENT
+#define GET_LOCALIP WiFi.localIP()
+#define GET_WIFI_RSSI WiFi.RSSI()
 #endif
 #include <SPI.h>
 #include <nRF24L01.h>
 #include <RF24.h>
 #include <ArduinoHA.h>
+#include <Preferences.h>
+
+uint64_t ADDRESS = 0;
+char ADDRESS_CHAR[100];
 
 typedef struct {
   uint32_t id;
@@ -160,16 +173,24 @@ HAMqtt MQTT(CLIENT, DEVICE);
 unsigned long SHORT_LAST_UPDATE_AT = 0;
 unsigned long LONG_LAST_UPDATE_AT = 0;
 char mqtt_payload[50];
-char UPTIME_CHAR[100];
-char MAC_CHAR[100];
+char UPTIME_CHAR[50];
+char MAC_CHAR[50];
+char INSTRUCTIONS_CHAR[250];
+char IP_CHAR[20];
+char RSSI_CHAR[50];
 bool FIRSTPRESS = true;
 bool RADIOACTIVE = false;
+bool GOT_ADDRESS = false;
 byte MAC[6];
 HASensor KEY_PRESS("key_press");
 HASensor UPTIME("uptime");
-HABinarySensor RADIO_STATUS("radio_active");
 HASensor MAC_ADDRESS("mac_address");
+HASensor IP_ADDRESS("ip_address");
+HASensor WIFI_RSSI("wifi_rssi");
 HASensor INSTRUCTIONS("instructions");
+HASensor REMOTE_ADDRESS("remote_address");
+HABinarySensor RADIO_STATUS("radio_status");
+HAButton REBOOT_DEVICE("reboot_device");
 
 // nRF24L01+ radio
 RF24 radio(CE_PIN, CSN_PIN);
@@ -178,6 +199,17 @@ RF24 radio(CE_PIN, CSN_PIN);
 char dataReceived[32]; // this must match dataToSend in the TX (need more than 10?)
 uint8_t payloadSize;
 bool newData = false;
+
+// Harmony RF24 network and radio parameters
+const uint64_t pair_address = 0xBB0ADCA575; // Common pairing RF24 address
+const uint8_t channels[12] = {5,8,14,17,32,35,41,44,62,65,71,74}; // Possible RF24 channels
+int channelId = 0;
+
+// Messages to send to Harmony Hub to get regular remote RF24 address
+const byte pairMessage[22] = {242,95,1,225,154,157,218,83,40,64,30,4,2,7,12,0,0,0,0,0,102,100};
+const byte pingMessage[5] = {242,64,1,225,236};
+int pingRetries = 0;
+
 
 // Harmont logic messages
 const uint32_t harmony_hold = 0x98280040;
@@ -199,34 +231,60 @@ harmony_command_t harmony_current_command = harmony_default_command;
 void setup() {
   // Setup communication protocols
   Serial.begin(115200);
+  delay(10000);
+  Serial.println("----Starting Device----");
+  setup_preferences();
   setup_network();
   setup_nRF24(); 
   setup_homeAssistant();
 }
 
-void setup_network() {
-  delay(10);
-  Serial.println("");
-  if (USE_WIRED) {
-    CONNECT;
-    if ( NETWORKUP ) {
-      Serial.println("Connected to network");
-    } else {
-      Serial.println("NOT connected to network");
-    }
+void setup_preferences() {
+  if (REMOTE_ADR) {
+    ADDRESS = REMOTE_ADR;
+    sprintf(ADDRESS_CHAR, "0x%llX", ADDRESS);
+    sprintf(INSTRUCTIONS_CHAR, "enjoy!");
+    Serial.print("The remote address is ");
+    Serial.println(ADDRESS_CHAR);
   } else {
-      Serial.print("Connecting to ");
-      Serial.println(SECRET_SSID);
-      CONNECT;
-      while ( !(NETWORKUP) ) {
-        delay(500);
-        Serial.print(".");
-      }
+    sprintf(ADDRESS_CHAR, "none");
+    Serial.println("No remote address, triggering initial setup");
   }
-  GETMAC;
-  sprintf(MAC_CHAR, "%2X:%2X:%2X:%2X:%2X:%2X", MAC[0], MAC[1], MAC[2], MAC[3], MAC[4], MAC[5]);
+
+}
+
+void setup_network() {
+  if (USE_WIRED) {
+    Serial.println("Connecting to network");
+  } else {
+    Serial.print("Connecting to ");
+    Serial.print(SECRET_SSID);
+  }
+  CONNECT;
+  while ( NETWORKDOWN ) {
+    delay(500);
+    Serial.print(".");
+  }
+  GET_MAC;
+  sprintf(MAC_CHAR, "%02X:%02X:%02X:%02X:%02X:%02X", MAC[0], MAC[1], MAC[2], MAC[3], MAC[4], MAC[5]);
+  Serial.println(""),
   Serial.print("Mac Address: ");
   Serial.println(MAC_CHAR);
+  IPAddress ip = GET_LOCALIP;
+  snprintf(IP_CHAR, sizeof(IP_CHAR), "%u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]);
+  Serial.print("IP address: ");
+  Serial.println(IP_CHAR);
+  sprintf(RSSI_CHAR, "%d", GET_WIFI_RSSI);
+  if (USE_WIRED){
+    Serial.print("Link speed: ");
+    Serial.print(RSSI_CHAR);
+    Serial.println(" Mb/s");
+  } else {
+    Serial.print("RSSI: ");
+    Serial.print(RSSI_CHAR);
+    Serial.println(" dBm");
+  }
+  
 }
 
 void setup_nRF24() {
@@ -238,14 +296,24 @@ void setup_nRF24() {
     Serial.println("nRF24L01+ Radio hardware started");
     RADIOACTIVE = true;
     // nRF24L01+ radio settings (fixed to match Harmony remotes)
-    radio.setChannel(RADIO_CH);
-    radio.setDataRate(RF24_2MBPS);
-    radio.enableDynamicPayloads();
-    radio.setCRCLength (RF24_CRC_16);
-    radio.openReadingPipe(1, REMOTE_ADR & 0xFFFFFFFF00);
-    radio.openReadingPipe(2, REMOTE_ADR & 0xFFFFFFFFFF);
-    radio.startListening();
-    Serial.println("nRF24L01+ Radio hardware configured");
+    if (ADDRESS){
+      radio.setChannel(RADIO_CH);
+      radio.setDataRate(RF24_2MBPS);
+      radio.enableDynamicPayloads();
+      radio.setCRCLength (RF24_CRC_16);
+      radio.openReadingPipe(1, ADDRESS & 0xFFFFFFFF00);
+      radio.openReadingPipe(2, ADDRESS & 0xFFFFFFFFFF);
+      radio.startListening();
+      Serial.println("nRF24L01+ Radio hardware configured");
+    } else {
+      radio.setDataRate(RF24_2MBPS);
+      radio.enableDynamicPayloads();
+      radio.enableAckPayload();
+      radio.setCRCLength (RF24_CRC_16);
+      radio.openWritingPipe(pair_address);
+      sprintf(INSTRUCTIONS_CHAR, "Power on the Harmony Smart Hub and press the pair/reset button");
+      Serial.println(INSTRUCTIONS_CHAR);
+    }
   }
 }
 
@@ -271,57 +339,115 @@ void setup_homeAssistant() {
   MAC_ADDRESS.setName("MAC Address");
   MAC_ADDRESS.setIcon("mdi:ethernet");
   MAC_ADDRESS.setEntityCategory("diagnostic");
+  IP_ADDRESS.setName("IP Address");
+  IP_ADDRESS.setIcon("mdi:network-outline");
+  IP_ADDRESS.setEntityCategory("diagnostic");
+  if (USE_WIRED) {
+    WIFI_RSSI.setName("Link Speed");
+    WIFI_RSSI.setIcon("mdi:speedometer");
+    WIFI_RSSI.setUnitOfMeasurement("Mb/s");
+  } else {
+    WIFI_RSSI.setName("RSSI");
+    WIFI_RSSI.setIcon("mdi:wifi");
+    WIFI_RSSI.setUnitOfMeasurement("dBm");
+  }
+  WIFI_RSSI.setEntityCategory("diagnostic");
   RADIO_STATUS.setName("Radio Status");
   RADIO_STATUS.setIcon("mdi:radio-tower");
   RADIO_STATUS.setEntityCategory("diagnostic");
   INSTRUCTIONS.setName("Instructions");
   INSTRUCTIONS.setIcon("mdi:file-document-outline");
   INSTRUCTIONS.setEntityCategory("diagnostic");
- // start MQTT connection
+  REMOTE_ADDRESS.setName("Remote Address");
+  REMOTE_ADDRESS.setIcon("mdi:remote");
+  REMOTE_ADDRESS.setEntityCategory("diagnostic");
+  REBOOT_DEVICE.setName("Reboot");
+  REBOOT_DEVICE.setIcon("mdi:restart");
+  REBOOT_DEVICE.setEntityCategory("diagnostic");
+  REBOOT_DEVICE.onCommand(onButtonCommand);
+  // start MQTT connection
   Serial.print("Starting connection to MQTT broker at ");
   Serial.println(BROKER_ADDR);
   MQTT.begin(BROKER_ADDR, BROKER_PORT, BROKER_USER, BROKER_PASS);
- 
 }
 
-harmony_command_t
-get_harmony_command(uint32_t id) {
-  int i = 0;
-  // Search regular commands
-  while(harmony_command_list[i].id != 0) {
-    if(harmony_command_list[i].id == id) return harmony_command_list[i];
-    i++;
+void onButtonCommand(HAButton* sender) {
+  if (sender == &REBOOT_DEVICE) {
+    Serial.println("rebooting device");
+    ESP.restart();
   }
-  // Return undefined (default) command
-  sprintf(harmony_default_command_name,"%.8X",id);
-  harmony_default_command.id = id;
-  return harmony_default_command;
-
 }
 
-void loop() {
-  MQTT.loop();
+void initial_setup() {
+  REMOTE_ADDRESS.setValue(ADDRESS_CHAR);
+  // Send out data to trigger the Hub
+  if(pingRetries == 0) {
+      radio.setChannel(channels[channelId]);
+      if(radio.write(&pairMessage, sizeof(pairMessage))) {
+          pingRetries = 10;
+      } else {
+          channelId++;
+          if(channelId > 11) channelId = 0;
+      }
+  } else {
+      radio.write(&pingMessage, sizeof(pingMessage));
+      pingRetries--;
+  }
+  delay(100);
+  // Look for and interpret ACK payloads
+  if(radio.isAckPayloadAvailable()) {
+      uint8_t dataReceived[32];
+      int payloadSize = radio.getDynamicPayloadSize();
+      radio.read(&dataReceived,payloadSize);
 
+      if(payloadSize == 22) {
+          sprintf(ADDRESS_CHAR, "0x");
+          for(int i=3;i<8;i++) {
+              char tmp[3];
+              if(i < 7) sprintf(tmp,"%.2X",dataReceived[i]);
+              else sprintf(tmp,"%.2X",dataReceived[i]-1);
+              strcat(ADDRESS_CHAR, tmp);
+          }
+          Serial.println("");
+          Serial.print("The remote RF24 address is: ");
+          Serial.println(ADDRESS_CHAR);
+          REMOTE_ADDRESS.setValue(ADDRESS_CHAR);
+          sprintf(INSTRUCTIONS_CHAR, "put remote address in #define REMOTE_ADR in ardunio_secrets.h and reload sketch");
+          Serial.println(INSTRUCTIONS_CHAR);
+          INSTRUCTIONS.setValue(INSTRUCTIONS_CHAR);
+          GOT_ADDRESS = true;
+      }      
+  }
+}
+
+void regular_run() {
   uint8_t pipeNum;
   if ( radio.available(&pipeNum) ) {
       // Read packet
       uint8_t dataReceived[32];
       int payloadSize = radio.getDynamicPayloadSize();
       radio.read(&dataReceived,payloadSize);
-
-      // Print contents of nRF25L01+ packet
-      Serial.print("nRF24L01 received 0x");
-      for(int i=0; i<payloadSize; i++) {
-        char tmp[3];
-        sprintf(tmp,"%.2X",dataReceived[i]);
-        Serial.print(tmp);
-        if(i<payloadSize-1) Serial.print(".");
+      if (pipeNum > 0){
+        RADIOACTIVE = true;
+        sprintf(INSTRUCTIONS_CHAR, "enjoy!");
+        // Print contents of nRF25L01+ packet
+        Serial.print("nRF24L01 received 0x");
+        for(int i=0; i<payloadSize; i++) {
+          char tmp[3];
+          sprintf(tmp,"%.2X",dataReceived[i]);
+          Serial.print(tmp);
+          if(i<payloadSize-1) Serial.print(".");
+        }
+        Serial.print(" (");
+        Serial.print(payloadSize);
+        Serial.print(" bytes on pipe ");
+        Serial.print(pipeNum);
+        Serial.println(")");
+      } else if (RADIOACTIVE) {
+        sprintf(INSTRUCTIONS_CHAR, "Radio has gone offline. Check connections, then reboot");
+        Serial.println(INSTRUCTIONS_CHAR);
+        RADIOACTIVE = false;
       }
-      Serial.print(" (");
-      Serial.print(payloadSize);
-      Serial.print(" bytes on pipe ");
-      Serial.print(pipeNum);
-      Serial.println(")");
 
       // Interpret data from Harmony remote
       if(payloadSize >= 5) { // Should always be true but just to make sure
@@ -358,7 +484,6 @@ void loop() {
   // Logic to send message to HA for different command types
   unsigned long now = millis();
   if(harmony_press_counter > 0) { // A button was pressed
-
     if(harmony_current_command.type <= 1) { // Click and and hold to repeat for type 1
       int publish = false;
       if(harmony_repeat_counter == 1) { // First repeat is immediate
@@ -384,7 +509,6 @@ void loop() {
         harmony_repeat_time = now;
       }
     }
-
     if(harmony_current_command.type == 2) { // Complex button with click, double, multiple, long button
       if(((harmony_release_time > harmony_press_time) && (now > harmony_release_time + WAIT_DURATION)) ||
           (now > harmony_press_time + CLICK_DURATION)) { // The button was pressed and released, or held for long
@@ -407,9 +531,7 @@ void loop() {
         harmony_press_counter = 0;
       } 
     }
-
   }
-
   // Harmony timeout logic to reset state in case of lost packets
   if((now > harmony_press_time + WAIT_DURATION) &&
      (now > harmony_release_time + WAIT_DURATION) &&
@@ -418,6 +540,30 @@ void loop() {
      harmony_press_counter = 0;
      harmony_repeat_counter = 0;
      harmony_current_command.id = 0;
+  }  
+}
+
+harmony_command_t
+get_harmony_command(uint32_t id) {
+  int i = 0;
+  // Search regular commands
+  while(harmony_command_list[i].id != 0) {
+    if(harmony_command_list[i].id == id) return harmony_command_list[i];
+    i++;
+  }
+  // Return undefined (default) command
+  sprintf(harmony_default_command_name,"%.8X",id);
+  harmony_default_command.id = id;
+  return harmony_default_command;
+}
+
+void loop() {
+  MQTT.loop();
+
+  if (ADDRESS) {
+    regular_run();
+  } else if (!GOT_ADDRESS) {
+    initial_setup();
   }
 
   if ((millis() - SHORT_LAST_UPDATE_AT) > 2000) { // update in 2s interval
@@ -440,14 +586,20 @@ void loop() {
       sprintf(UPTIME_CHAR, "%ds", seconds);
     }
     UPTIME.setValue(UPTIME_CHAR);
-    MAC_ADDRESS.setValue(MAC_CHAR);
     RADIO_STATUS.setState(RADIOACTIVE);
-    INSTRUCTIONS.setValue("none");
+    INSTRUCTIONS.setValue(INSTRUCTIONS_CHAR);
     SHORT_LAST_UPDATE_AT = millis();
   }
 
   if ((millis() - LONG_LAST_UPDATE_AT) > 60000) { // update in 60s interval
     LONG_LAST_UPDATE_AT = millis();
+    MAC_ADDRESS.setValue(MAC_CHAR);
+    IP_ADDRESS.setValue(IP_CHAR);
+    REMOTE_ADDRESS.setValue(ADDRESS_CHAR);
+    if (!USE_WIRED){
+      sprintf(RSSI_CHAR, "%d", GET_WIFI_RSSI);
+    }
+    WIFI_RSSI.setValue(RSSI_CHAR);
   }
 
 }

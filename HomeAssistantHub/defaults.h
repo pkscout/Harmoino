@@ -1,14 +1,17 @@
 // network connection
 #ifndef USE_WIRED
-#define USE_WIRED true
+#define USE_WIRED false
 #endif
 
 // nRF24L01+ parameters
+#ifndef REMOTE_ADR
+#define REMOTE_ADR 0
+#endif
 #ifndef CE_PIN
-#define CE_PIN 2
+#define CE_PIN 14
 #endif
 #ifndef CSN_PIN
-#define CSN_PIN 4
+#define CSN_PIN 8
 #endif
 #ifndef RADIO_CH
 #define RADIO_CH 5
