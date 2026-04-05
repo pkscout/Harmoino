@@ -254,7 +254,7 @@ void setupPreferences() {
 
 void setupNetwork() {
   if (USE_WIRED) {
-    Serial.println("Connecting to network");
+    Serial.print("Connecting to network");
   } else {
     Serial.print("Connecting to ");
     Serial.print(SECRET_SSID);
