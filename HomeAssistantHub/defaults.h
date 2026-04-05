@@ -57,7 +57,7 @@
 
 // Harmony parameters
 #ifndef DEVICE_NAME
-#define DEVICE_NAME "Harmony OpenHub"
+#define DEVICE_NAME "Harmoino OpenHub"
 #endif
 #ifndef CLICK_DURATION
 #define CLICK_DURATION 500

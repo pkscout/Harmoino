@@ -78,9 +78,9 @@
 // CMD_PLUS - key press (default 0)
 // CMD_MINUS - key press (default 0)
 
-#define SOFTWARE_VERSION "2.3.2"
+#define SOFTWARE_VERSION "2.3.3"
 #define MANUFACTURER "pkscout"
-#define MODEL "Harmony Companion OpenHub"
+#define MODEL "Harmoino OpenHub for Home Assistant"
 #define CONFIG_URL "https://github.com/pkscout/Harmoino"
 
 #include "arduino_secrets.h"
