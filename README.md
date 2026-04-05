@@ -1,4 +1,4 @@
-# Harmoino for Home Assistant
+# Harmoino OpenHub for Home Assistant
 The primary focus of this fork is a new HomeAssistantHub that combines all the remote discovery and operations from the original into one sketch and automatically creates a device in Home Assistant so that you can use your Harmony remote to control things in Home Assistant.
 
 Please see the wiki pages for details on the hardware setup, software install, and operation.
