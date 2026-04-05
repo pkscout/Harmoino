@@ -78,7 +78,7 @@
 // CMD_PLUS - key press (default 0)
 // CMD_MINUS - key press (default 0)
 
-#define SOFTWARE_VERSION "2.3.1"
+#define SOFTWARE_VERSION "2.3.2"
 #define MANUFACTURER "pkscout"
 #define MODEL "Harmony Companion OpenHub"
 #define CONFIGURL "https://github.com/pkscout/Harmoino"
@@ -97,7 +97,7 @@
 #define NETWORK_DOWN ETH.localIP() == IPAddress(0, 0, 0, 0)
 #define NETWORK_CLIENT NetworkClient client
 #define GET_LOCALIP ETH.localIP()
-#define GET_WIFI_RSSI ETH.speed()
+#define GET_WIFI_RSSI ETH.linkSpeed()
 #else
 #include <WiFi.h>
 #define NETWORK_CONNECT WiFi.begin(SECRET_SSID, SECRET_PASS)
