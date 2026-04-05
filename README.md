@@ -3,9 +3,8 @@ The primary focus of this fork is a new HomeAssistantHub that combines all the r
 
 Please see the wiki pages for details on the hardware setup, software install, and operation.
 
-None of this would have been possible without the work joakimjalden did to reverse engineer the radio signals between the Harmony Hub and the remote.  [Here's the original repository](https://github.com/joakimjalden/Harmoino).  The original readme and code are still here are well.
 
 ## Acknowledgements
-None of this would have been possible without the work joakimjalden did to reverse engineer the radio signals between the Harmony Hub and the remote.  Here's joakimjalden's original acknowledgements too.
+None of this would have been possible without the work joakimjalden did to reverse engineer the radio signals between the Harmony Hub and the remote.  [Here's the original repository](https://github.com/joakimjalden/Harmoino).  The original readme and code are still here are well.  And here's joakimjalden's original acknowledgements too.
 
 > First, I wish to acknowledge the [Hacking the Harmony RF Remote](https://haukcode.wordpress.com/2015/04/16/hacking-the-harmony-rf-remote/) blog post on Hakan's Coding and Stuff. This post gave me crucial pointers early on, especially with the radio hardware. I can also recommend the discussion thread for helpful information on pairing the Harmony Remote with the Logitech Unifying Receiver on a PC if you are looking for a more software-based solution. Second, the [Simple nRF24L01+ 2.4GHz transceiver demo](https://forum.arduino.cc/t/simple-nrf24l01-2-4ghz-transceiver-demo/405123) by Robin2 was tremendously helpful in getting started with the RF24 library for the Arduino, and it inspired the minimalistic SimpleHub implementation.
