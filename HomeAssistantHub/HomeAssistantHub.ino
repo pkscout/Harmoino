@@ -81,7 +81,7 @@
 #define SOFTWARE_VERSION "2.3.2"
 #define MANUFACTURER "pkscout"
 #define MODEL "Harmony Companion OpenHub"
-#define CONFIGURL "https://github.com/pkscout/Harmoino"
+#define CONFIG_URL "https://github.com/pkscout/Harmoino"
 
 #include "arduino_secrets.h"
 #include "defaults.h"
@@ -202,7 +202,7 @@ uint8_t payloadSize;
 bool newData = false;
 
 // Harmony RF24 network and radio parameters
-const uint64_t pair_address = 0xBB0ADCA575; // Common pairing RF24 address
+const uint64_t pairAddress = 0xBB0ADCA575; // Common pairing RF24 address
 const uint8_t channels[12] = {5,8,14,17,32,35,41,44,62,65,71,74}; // Possible RF24 channels
 int channelId = 0;
 
@@ -213,8 +213,8 @@ int pingRetries = 0;
 
 // Harmony logic messages
 const uint32_t harmonyHold = 0x98280040;
-const uint32_t harmony_ping = 0x704C0440;
-const uint32_t harmony_sleep = 0x0000034F;
+const uint32_t harmonyPing = 0x704C0440;
+const uint32_t harmonySleep = 0x0000034F;
 
 char harmonyDefaultCommandName[9];
 harmonyCommandT harmonyDefaultCommand = {0,0,harmonyDefaultCommandName};
@@ -309,7 +309,7 @@ void setupNrf24() {
       radio.enableDynamicPayloads();
       radio.enableAckPayload();
       radio.setCRCLength (RF24_CRC_16);
-      radio.openWritingPipe(pair_address);
+      radio.openWritingPipe(pairAddress);
       Serial.println("Power on the Harmony Smart Hub and press the pair/reset button");
     }
   }
@@ -322,7 +322,7 @@ void setupHomeAssistant() {
   device.setSoftwareVersion(SOFTWARE_VERSION);
   device.setManufacturer(MANUFACTURER);
   device.setModel(MODEL);
-  device.setConfigurationUrl(CONFIGURL);
+  device.setConfigurationUrl(CONFIG_URL);
   device.enableExtendedUniqueIds();
   device.enableSharedAvailability();
   device.enableLastWill();
