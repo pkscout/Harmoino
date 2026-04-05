@@ -2,6 +2,33 @@
 #ifndef USE_WIRED
 #define USE_WIRED false
 #endif
+#ifndef SECRET_SSID
+#define SECRET_SSID ""
+#endif
+#ifndef SECRET_PASS
+#define SECRET_PASS ""
+#endif
+
+// default PINS for the Ethernet Port
+#ifndef PHY_ADR
+#define PHY_ADR 0
+#endif
+#ifndef PHY_RESET
+#define PHY_RESET -1
+#endif
+#ifndef SMI_MDC
+#define SMI_MDC 16
+#endif
+#ifndef SMI_MDIO
+#define SMI_MDIO 17
+#endif
+#ifndef ETH_PHY_SET
+#define ETH_PHY_SET ETH_PHY_RTL8201
+#endif
+#ifndef ETH_GPIO_CLK_SET
+#define ETH_CPIO_CLK_SET ETH_CLOCK_GPIO0_IN
+#endif
+
 
 // nRF24L01+ parameters
 #ifndef REMOTE_ADR
@@ -44,147 +71,147 @@
 #ifndef FURTHER_REPEAT_DURATION
 #define FURTHER_REPEAT_DURATION 250
 #endif
-#ifndef OK
-#define OK 0
+#ifndef CMD_OK
+#define CMD_OK 0
 #endif
-#ifndef UP
-#define UP 1
+#ifndef CMD_UP
+#define CMD_UP 1
 #endif
-#ifndef DOWN
-#define DOWN 1
+#ifndef CMD_DOWN
+#define CMD_DOWN 1
 #endif
-#ifndef LEFT
-#define LEFT 1
+#ifndef CMD_LEFT
+#define CMD_LEFT 1
 #endif
-#ifndef RIGHT
-#define RIGHT 1
+#ifndef CMD_RIGHT
+#define CMD_RIGHT 1
 #endif
-#ifndef VOL_UP
-#define VOL_UP 1
+#ifndef CMD_VOL_UP
+#define CMD_VOL_UP 1
 #endif
-#ifndef VOL_DOWN
-#define VOL_DOWN 1
+#ifndef CMD_VOL_DOWN
+#define CMD_VOL_DOWN 1
 #endif
-#ifndef CH_UP
-#define CH_UP 1
+#ifndef CMD_CH_UP
+#define CMD_CH_UP 1
 #endif
-#ifndef CH_DOWN
-#define CH_DOWN 1
+#ifndef CMD_CH_DOWN
+#define CMD_CH_DOWN 1
 #endif
-#ifndef MUTE
-#define MUTE 0
+#ifndef CMD_MUTE
+#define CMD_MUTE 0
 #endif
-#ifndef RETURN
-#define RETURN 0
+#ifndef CMD_RETURN
+#define CMD_RETURN 0
 #endif
-#ifndef EXIT
-#define EXIT 0
+#ifndef CMD_EXIT
+#define CMD_EXIT 0
 #endif
-#ifndef MENU
-#define MENU 0
+#ifndef CMD_MENU
+#define CMD_MENU 0
 #endif
-#ifndef DVR
-#define DVR 0
+#ifndef CMD_DVR
+#define CMD_DVR 0
 #endif
-#ifndef GUIDE
-#define GUIDE 0
+#ifndef CMD_GUIDE
+#define CMD_GUIDE 0
 #endif
-#ifndef INFO
-#define INFO 0
+#ifndef CMD_INFO
+#define CMD_INFO 0
 #endif
-#ifndef RED
-#define RED 0
+#ifndef CMD_RED
+#define CMD_RED 0
 #endif
-#ifndef GREEN
-#define GREEN 0
+#ifndef CMD_GREEN
+#define CMD_GREEN 0
 #endif
-#ifndef YELLOW
-#define YELLOW 0
+#ifndef CMD_YELLOW
+#define CMD_YELLOW 0
 #endif
-#ifndef BLUE
-#define BLUE 0
+#ifndef CMD_BLUE
+#define CMD_BLUE 0
 #endif
-#ifndef BACKWARD
-#define BACKWARD 1
+#ifndef CMD_BACKWARD
+#define CMD_BACKWARD 1
 #endif
-#ifndef FORWARD
-#define FORWARD 1
+#ifndef CMD_FORWARD
+#define CMD_FORWARD 1
 #endif
-#ifndef PLAY
-#define PLAY 0
+#ifndef CMD_PLAY
+#define CMD_PLAY 0
 #endif
-#ifndef PAUSE
-#define PAUSE 0
+#ifndef CMD_PAUSE
+#define CMD_PAUSE 0
 #endif
-#ifndef STOP
-#define STOP 0
+#ifndef CMD_STOP
+#define CMD_STOP 0
 #endif
-#ifndef REC
-#define REC 0
+#ifndef CMD_REC
+#define CMD_REC 0
 #endif
-#ifndef MUSIC
-#define MUSIC 2
+#ifndef CMD_MUSIC
+#define CMD_MUSIC 2
 #endif
-#ifndef TV
-#define TV 2
+#ifndef CMD_TV
+#define CMD_TV 2
 #endif
-#ifndef MOVIE
-#define MOVIE 2
+#ifndef CMD_MOVIE
+#define CMD_MOVIE 2
 #endif
-#ifndef OFF
-#define OFF 0
+#ifndef CMD_OFF
+#define CMD_OFF 0
 #endif
-#ifndef NUM0
-#define NUM0 0
+#ifndef CMD_NUM0
+#define CMD_NUM0 0
 #endif
-#ifndef NUM1
-#define NUM1 0
+#ifndef CMD_NUM1
+#define CMD_NUM1 0
 #endif
-#ifndef NUM2
-#define NUM2 0
+#ifndef CMD_NUM2
+#define CMD_NUM2 0
 #endif
-#ifndef NUM3
-#define NUM3 0
+#ifndef CMD_NUM3
+#define CMD_NUM3 0
 #endif
-#ifndef NUM4
-#define NUM4 0
+#ifndef CMD_NUM4
+#define CMD_NUM4 0
 #endif
-#ifndef NUM5
-#define NUM5 0
+#ifndef CMD_NUM5
+#define CMD_NUM5 0
 #endif
-#ifndef NUM6
-#define NUM6 0
+#ifndef CMD_NUM6
+#define CMD_NUM6 0
 #endif
-#ifndef NUM7
-#define NUM7 0
+#ifndef CMD_NUM7
+#define CMD_NUM7 0
 #endif
-#ifndef NUM8
-#define NUM8 0
+#ifndef CMD_NUM8
+#define CMD_NUM8 0
 #endif
-#ifndef NUM9
-#define NUM9 0
+#ifndef CMD_NUM9
+#define CMD_NUM9 0
 #endif
-#ifndef DOTDOT
-#define DOTDOT 0
+#ifndef CMD_DOTDOT
+#define CMD_DOTDOT 0
 #endif
-#ifndef DOTE
-#define DOTE 0
+#ifndef CMD_DOTE
+#define CMD_DOTE 0
 #endif
-#ifndef LIGHT1
-#define LIGHT1 0
+#ifndef CMD_LIGHT1
+#define CMD_LIGHT1 0
 #endif
-#ifndef LIGHT2
-#define LIGHT2 0
+#ifndef CMD_LIGHT2
+#define CMD_LIGHT2 0
 #endif
-#ifndef SOCKET1
-#define SOCKET1 0
+#ifndef CMD_SOCKET1
+#define CMD_SOCKET1 0
 #endif
-#ifndef SOCKET2
-#define SOCKET2 0
+#ifndef CMD_SOCKET2
+#define CMD_SOCKET2 0
 #endif
-#ifndef PLUS
-#define PLUS 0
+#ifndef CMD_PLUS
+#define CMD_PLUS 0
 #endif
-#ifndef MINUS
-#define MINUS 0
+#ifndef CMD_MINUS
+#define CMD_MINUS 0
 #endif
