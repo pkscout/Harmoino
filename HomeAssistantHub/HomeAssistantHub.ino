@@ -11,8 +11,8 @@
 // arduino_secrets.h CAN contain the following #define statements to override defaults
 // USE_WIRED - whether to use wired network config (default false)
 //   this only supports RTL8201 based LAN devices
-// CE - the pin number or name for the CE connection to the radio (default 2)
-// CSN - the pin number or name for the CSN connection to the radio (default 4)
+// CE - the pin number or name for the CE connection to the radio (default 14)
+// CSN - the pin number or name for the CSN connection to the radio (default 8)
 // RADIO_CH - the channel to listen for remotes, Choose 5 (default),8,14,17,32,35,41,44,62,65,71 or 74
 // DEVICE_NAME - the name of the remote (default Harmony OpenHub)
 // CLICK_DURATION - maximal duration of a click in ms, and minimal duration for a long press (default 500)
@@ -29,54 +29,54 @@
 //   Type 0 : Only accept single clicks separated nu button releases (most responsive)
 //   Type 1 : Generated repeated clicks when button is held 
 //   Type 2 : Registers single clicks, double clicks, multiple clicks (three or more), or long presses
-// OK - key press (default 0)
-// UP - key press (default 1)
-// DOWN - key press (default 1)
-// LEFT - key press (default 1)
-// RIGHT - key press (default 1)
-// VOL_UP - key press (default 1)
-// VOL_DOWN - key press (default 1)
-// CH_UP - key press (default 1)
-// CH_DOWN - key press (default 1)
-// MUTE - key press (default 0)
-// RETURN - key press (default 0)
-// EXIT - key press (default 0)
-// MENU - key press (default 0)
-// DVR - key press (default 0)
-// GUIDE - key press (default 0)
-// INFO - key press (default 0)
-// RED - key press (default 0)
-// GREEN - key press (default 0)
-// YELLOW - key press (default 0)
-// BLUE - key press (default 0)
-// BACKWARD - key press (default 1)
-// FORWARD - key press (default 1)
-// PLAY - key press (default 0)
-// PAUSE - key press (default 0)
-// STOP - key press (default 0)
-// REC - key press (default 0)
-// MUSIC - key press (default 2)
-// TV - key press (default 2)
-// MOVIE - key press (default 2)
-// OFF - key press (default 0)
-// NUM0 - key press (default 0)
-// NUM1 - key press (default 0)
-// NUM2 - key press (default 0)
-// NUM3 - key press (default 0)
-// NUM4 - key press (default 0)
-// NUM5 - key press (default 0)
-// NUM6 - key press (default 0)
-// NUM7 - key press (default 0)
-// NUM8 - key press (default 0)
-// NUM9 - key press (default 0)
-// DOTDOT - key press (default 0)
-// DOTE - key press (default 0)
-// LIGHT1 - key press (default 0)
-// LIGHT2 - key press (default 0)
-// SOCKET1 - key press (default 0)
-// SOCKET2 - key press (default 0)
-// PLUS - key press (default 0)
-// MINUS - key press (default 0)
+// CMD_OK - key press (default 0)
+// CMD_UP - key press (default 1)
+// CMD_DOWN - key press (default 1)
+// CMD_LEFT - key press (default 1)
+// CMD_RIGHT - key press (default 1)
+// CMD_VOL_UP - key press (default 1)
+// CMD_VOL_DOWN - key press (default 1)
+// CMD_CH_UP - key press (default 1)
+// CMD_CH_DOWN - key press (default 1)
+// CMD_MUTE - key press (default 0)
+// CMD_RETURN - key press (default 0)
+// CMD_EXIT - key press (default 0)
+// CMD_MENU - key press (default 0)
+// CMD_DVR - key press (default 0)
+// CMD_GUIDE - key press (default 0)
+// CMD_INFO - key press (default 0)
+// CMD_RED - key press (default 0)
+// CMD_GREEN - key press (default 0)
+// CMD_YELLOW - key press (default 0)
+// CMD_BLUE - key press (default 0)
+// CMD_BACKWARD - key press (default 1)
+// CMD_FORWARD - key press (default 1)
+// CMD_PLAY - key press (default 0)
+// CMD_PAUSE - key press (default 0)
+// CMD_STOP - key press (default 0)
+// CMD_REC - key press (default 0)
+// CMD_MUSIC - key press (default 2)
+// CMD_TV - key press (default 2)
+// CMD_MOVIE - key press (default 2)
+// CMD_OFF - key press (default 0)
+// CMD_NUM0 - key press (default 0)
+// CMD_NUM1 - key press (default 0)
+// CMD_NUM2 - key press (default 0)
+// CMD_NUM3 - key press (default 0)
+// CMD_NUM4 - key press (default 0)
+// CMD_NUM5 - key press (default 0)
+// CMD_NUM6 - key press (default 0)
+// CMD_NUM7 - key press (default 0)
+// CMD_NUM8 - key press (default 0)
+// CMD_NUM9 - key press (default 0)
+// CMD_DOTDOT - key press (default 0)
+// CMD_DOTE - key press (default 0)
+// CMD_LIGHT1 - key press (default 0)
+// CMD_LIGHT2 - key press (default 0)
+// CMD_SOCKET1 - key press (default 0)
+// CMD_SOCKET2 - key press (default 0)
+// CMD_PLUS - key press (default 0)
+// CMD_MINUS - key press (default 0)
 
 #define SOFTWARE_VERSION "2.3.0"
 #define MANUFACTURER "pkscout"
@@ -92,108 +92,106 @@
 #include <Preferences.h>
 #if USE_WIRED
 #include <ETH.h>
-#define CONNECT ETH.begin(ETH_PHY_RTL8201, 0, 16, 17, -1, ETH_CLOCK_GPIO0_IN)
-#define GET_MAC ETH.macAddress(MAC)
-#define NETWORKDOWN ETH.localIP() == IPAddress(0, 0, 0, 0)
-#define NETWORKCLIENT NetworkClient CLIENT
+#define NETWORK_CONNECT ETH.begin(ETH_PHY_SET, PHY_ADR, SMI_MDC, SMI_MDIO, PHY_RESET, ETH_GPIO_CLK_SET)
+#define GET_MAC ETH.macAddress(mac)
+#define NETWORK_DOWN ETH.localIP() == IPAddress(0, 0, 0, 0)
+#define NETWORK_CLIENT NetworkClient client
 #define GET_LOCALIP ETH.localIP()
 #define GET_WIFI_RSSI ETH.speed()
 #else
 #include <WiFi.h>
-#define CONNECT WiFi.begin(SECRET_SSID, SECRET_PASS)
-#define GET_MAC WiFi.macAddress(MAC)
-#define NETWORKDOWN WiFi.status() != WL_CONNECTED
-#define NETWORKCLIENT WiFiClient CLIENT
+#define NETWORK_CONNECT WiFi.begin(SECRET_SSID, SECRET_PASS)
+#define GET_MAC WiFi.macAddress(mac)
+#define NETWORK_DOWN WiFi.status() != WL_CONNECTED
+#define NETWORK_CLIENT WiFiClient client
 #define GET_LOCALIP WiFi.localIP()
 #define GET_WIFI_RSSI WiFi.RSSI()
 #endif
 
 Preferences prefs;
-uint64_t ADDRESS = 0;
-char ADDRESS_CHAR[50];
+uint64_t address = 0;
+char addressChar[50];
 
 typedef struct {
   uint32_t id;
   int type;
   char *name;
-} harmony_command_t;
+} harmonyCommandT;
 
-harmony_command_t harmony_command_list[] = 
- {{0x005800C1,OK,"ok"},
-  {0x005200C1,UP,"up"},
-  {0x05100C1,DOWN,"down"},
-  {0x005000C1,LEFT,"left"},
-  {0x004F00C1,RIGHT,"right"},
-  {0x0000E9C3,VOL_UP,"volume_up"},
-  {0x0000EAC3,VOL_DOWN,"volume_down"},
-  {0x00009CC3,CH_UP,"channel_up"},
-  {0x00009DC3,CH_DOWN,"channel_down"},
-  {0x0000E2C3,MUTE,"mute"},
-  {0x000224C3,RETURN,"return"},
-  {0x000094C3,EXIT,"exit"},
-  {0x006500C1,MENU,"menu"},
-  {0x00009AC3,DVR,"dvr"},
-  {0x00008DC3,GUIDE,"guide"},
-  {0x0001FFC3,INFO,"info"},
-  {0x0001F7C3,RED,"red"},
-  {0x0001F6C3,GREEN,"green"},
-  {0x0001F5C3,YELLOW,"yellow"},
-  {0x0001F4C3,BLUE,"blue"},
-  {0x0000B4C3,BACKWARD,"backward"},
-  {0x0000B3C3,FORWARD,"forward"},
-  {0x0000B0C3,PLAY,"play"},
-  {0x0000B1C3,PAUSE,"pause"},
-  {0x0000B7C3,STOP,"stop"},
-  {0x0000B2C3,REC,"rec"},
-  {0x0001E8C3,MUSIC,"music"},
-  {0x0001EDC3,TV,"tv"},
-  {0x0001E9C3,MOVIE,"movie"},
-  {0x0001ECC3,OFF,"off"},
-  {0x001E00C1,NUM1,"number1"},
-  {0x001F00C1,NUM2,"number2"},
-  {0x002000C1,NUM3,"number3"},
-  {0x002100C1,NUM4,"number4"},
-  {0x002200C1,NUM5,"number5"},
-  {0x002300C1,NUM6,"number6"},
-  {0x002400C1,NUM7,"number7"},
-  {0x002500C1,NUM8,"number8"},
-  {0x002600C1,NUM9,"number9"},
-  {0x002700C1,NUM0,"number0"},
-  {0x005600C1,DOTDOT,"dotdot"},
-  {0x002800C1,DOTE,"dote"},
-  {0x000FF2C3,LIGHT1,"light1"},
-  {0x000FF3C3,LIGHT2,"light2"},
-  {0x000FF4C3,SOCKET1,"socket1"},
-  {0x000FF5C3,SOCKET2,"socket2"},
-  {0x000FF0C3,PLUS,"plus"},
-  {0x000FF1C3,MINUS,"minus"},
+harmonyCommandT harmonyCommandList[] = 
+ {{0x005800C1,CMD_OK,"ok"},
+  {0x005200C1,CMD_UP,"up"},
+  {0x05100C1,CMD_DOWN,"down"},
+  {0x005000C1,CMD_LEFT,"left"},
+  {0x004F00C1,CMD_RIGHT,"right"},
+  {0x0000E9C3,CMD_VOL_UP,"volume_up"},
+  {0x0000EAC3,CMD_VOL_DOWN,"volume_down"},
+  {0x00009CC3,CMD_CH_UP,"channel_up"},
+  {0x00009DC3,CMD_CH_DOWN,"channel_down"},
+  {0x0000E2C3,CMD_MUTE,"mute"},
+  {0x000224C3,CMD_RETURN,"return"},
+  {0x000094C3,CMD_EXIT,"exit"},
+  {0x006500C1,CMD_MENU,"menu"},
+  {0x00009AC3,CMD_DVR,"dvr"},
+  {0x00008DC3,CMD_GUIDE,"guide"},
+  {0x0001FFC3,CMD_INFO,"info"},
+  {0x0001F7C3,CMD_RED,"red"},
+  {0x0001F6C3,CMD_GREEN,"green"},
+  {0x0001F5C3,CMD_YELLOW,"yellow"},
+  {0x0001F4C3,CMD_BLUE,"blue"},
+  {0x0000B4C3,CMD_BACKWARD,"backward"},
+  {0x0000B3C3,CMD_FORWARD,"forward"},
+  {0x0000B0C3,CMD_PLAY,"play"},
+  {0x0000B1C3,CMD_PAUSE,"pause"},
+  {0x0000B7C3,CMD_STOP,"stop"},
+  {0x0000B2C3,CMD_REC,"rec"},
+  {0x0001E8C3,CMD_MUSIC,"music"},
+  {0x0001EDC3,CMD_TV,"tv"},
+  {0x0001E9C3,CMD_MOVIE,"movie"},
+  {0x0001ECC3,CMD_OFF,"off"},
+  {0x001E00C1,CMD_NUM1,"number1"},
+  {0x001F00C1,CMD_NUM2,"number2"},
+  {0x002000C1,CMD_NUM3,"number3"},
+  {0x002100C1,CMD_NUM4,"number4"},
+  {0x002200C1,CMD_NUM5,"number5"},
+  {0x002300C1,CMD_NUM6,"number6"},
+  {0x002400C1,CMD_NUM7,"number7"},
+  {0x002500C1,CMD_NUM8,"number8"},
+  {0x002600C1,CMD_NUM9,"number9"},
+  {0x002700C1,CMD_NUM0,"number0"},
+  {0x005600C1,CMD_DOTDOT,"dotdot"},
+  {0x002800C1,CMD_DOTE,"dote"},
+  {0x000FF2C3,CMD_LIGHT1,"light1"},
+  {0x000FF3C3,CMD_LIGHT2,"light2"},
+  {0x000FF4C3,CMD_SOCKET1,"socket1"},
+  {0x000FF5C3,CMD_SOCKET2,"socket2"},
+  {0x000FF0C3,CMD_PLUS,"plus"},
+  {0x000FF1C3,CMD_MINUS,"minus"},
   {0,0,"null"}};
 
 // Network and Home Assistant mqtt clients
-NETWORKCLIENT;
-HADevice DEVICE;
-HAMqtt MQTT(CLIENT, DEVICE);
-unsigned long SHORT_LAST_UPDATE_AT = 0;
-unsigned long LONG_LAST_UPDATE_AT = 0;
-char mqtt_payload[50];
-char UPTIME_CHAR[50];
-char MAC_CHAR[50];
-char IP_CHAR[20];
-char RSSI_CHAR[50];
-bool FIRSTPRESS = true;
-bool RADIOACTIVE = false;
-bool GOT_ADDRESS = false;
-byte MAC[6];
-HASensor KEY_PRESS("key_press");
-HASensor UPTIME("uptime");
-HASensor MAC_ADDRESS("mac_address");
-HASensor IP_ADDRESS("ip_address");
-HASensor WIFI_RSSI("wifi_rssi");
-HASensor REMOTE_ADDRESS("remote_address");
-HABinarySensor RADIO_STATUS("radio_status");
-HAButton REBOOT_DEVICE("reboot_device");
-HAButton RESET_DEVICE("reset_device");
-HAButton MIGRATE_ADDRESS("migrate_address");
+NETWORK_CLIENT;
+HADevice device;
+HAMqtt mqtt(client, device);
+unsigned long shortLastUpdateAt = 0;
+unsigned long longLastUpdateAt = 0;
+char mqttPayload[50];
+char uptimeChar[50];
+char macChar[50];
+char ipChar[20];
+char rssiChar[50];
+bool radioActive = false;
+byte mac[6];
+HASensor keyPress("keyPress");
+HASensor upTime("upTime");
+HASensor macAddress("macAddress");
+HASensor ipAddress("ipAddress");
+HASensor wifiRssi("wifiRssi");
+HASensor remoteAddress("remoteAddress");
+HABinarySensor radioStatus("radioStatus");
+HAButton rebootDevice("rebootDevice");
+HAButton resetDevice("resetDevice");
+HAButton migrateAddress("migrateAddress");
 
 // nRF24L01+ radio
 RF24 radio(CE_PIN, CSN_PIN);
@@ -214,96 +212,96 @@ const byte pingMessage[5] = {242,64,1,225,236};
 int pingRetries = 0;
 
 // Harmony logic messages
-const uint32_t harmony_hold = 0x98280040;
+const uint32_t harmonyHold = 0x98280040;
 const uint32_t harmony_ping = 0x704C0440;
 const uint32_t harmony_sleep = 0x0000034F;
 
-char harmony_default_command_name[9];
-harmony_command_t harmony_default_command = {0,0,harmony_default_command_name};
+char harmonyDefaultCommandName[9];
+harmonyCommandT harmonyDefaultCommand = {0,0,harmonyDefaultCommandName};
 
 // Harmony state logic
-unsigned long harmony_press_time = 0;
-unsigned long harmony_release_time = 0;
-unsigned long harmony_hold_time = 0;
-unsigned long harmony_repeat_time = 0;
-unsigned int harmony_press_counter = 0;
-unsigned int harmony_repeat_counter = 0;
-harmony_command_t harmony_current_command = harmony_default_command;
+unsigned long harmonyPressTime = 0;
+unsigned long harmonyReleaseTime = 0;
+unsigned long harmonyHoldTime = 0;
+unsigned long harmonyRepeatTime = 0;
+unsigned int harmonyPressCounter = 0;
+unsigned int harmonyRepeatCounter = 0;
+harmonyCommandT harmonyCurrentCommand = harmonyDefaultCommand;
 
 void setup() {
   // Setup communication protocols
   Serial.begin(115200);
   delay(10000);
   Serial.println("----Starting Device----");
-  setup_preferences();
-  setup_network();
-  setup_nRF24(); 
-  setup_homeAssistant();
+  setupPreferences();
+  setupNetwork();
+  setupNrf24(); 
+  setupHomeAssistant();
 }
 
-void setup_preferences() {
+void setupPreferences() {
   prefs.begin("harmonio", false);
-  ADDRESS = prefs.getULong64("remote_address", 0);
-  if (ADDRESS) {
-    sprintf(ADDRESS_CHAR, "0x%llX", ADDRESS);
+  address = prefs.getULong64("remote_address", 0);
+  if (address) {
+    sprintf(addressChar, "0x%llX", address);
     Serial.print("The remote address is ");
-    Serial.println(ADDRESS_CHAR);
+    Serial.println(addressChar);
   } else {
-    sprintf(ADDRESS_CHAR, "none");
+    sprintf(addressChar, "none");
     Serial.println("No remote address, triggering initial setup");
   }
 }
 
-void setup_network() {
+void setupNetwork() {
   if (USE_WIRED) {
     Serial.println("Connecting to network");
   } else {
     Serial.print("Connecting to ");
     Serial.print(SECRET_SSID);
   }
-  CONNECT;
-  while ( NETWORKDOWN ) {
+  NETWORK_CONNECT;
+  while ( NETWORK_DOWN ) {
     delay(500);
     Serial.print(".");
   }
   GET_MAC;
-  sprintf(MAC_CHAR, "%02X:%02X:%02X:%02X:%02X:%02X", MAC[0], MAC[1], MAC[2], MAC[3], MAC[4], MAC[5]);
+  sprintf(macChar, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
   Serial.println(""),
   Serial.print("Mac Address: ");
-  Serial.println(MAC_CHAR);
+  Serial.println(macChar);
   IPAddress ip = GET_LOCALIP;
-  snprintf(IP_CHAR, sizeof(IP_CHAR), "%u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]);
+  snprintf(ipChar, sizeof(ipChar), "%u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]);
   Serial.print("IP address: ");
-  Serial.println(IP_CHAR);
-  sprintf(RSSI_CHAR, "%d", GET_WIFI_RSSI);
+  Serial.println(ipChar);
+  sprintf(rssiChar, "%d", GET_WIFI_RSSI);
   if (USE_WIRED){
     Serial.print("Link speed: ");
-    Serial.print(RSSI_CHAR);
+    Serial.print(rssiChar);
     Serial.println(" Mb/s");
   } else {
     Serial.print("RSSI: ");
-    Serial.print(RSSI_CHAR);
+    Serial.print(rssiChar);
     Serial.println(" dBm");
   }
   
 }
 
-void setup_nRF24() {
+void setupNrf24() {
   SPI.begin();
-  RADIOACTIVE = radio.begin(&SPI);
-  if( !RADIOACTIVE ) {
+  radioActive = radio.begin(&SPI);
+  if( !radioActive ) {
     Serial.println("nRF24L01+ Radio hardware not responding");
   } else {
     Serial.println("nRF24L01+ Radio hardware started");
-    RADIOACTIVE = true;
+    radioActive = true;
     // nRF24L01+ radio settings (fixed to match Harmony remotes)
-    if (ADDRESS){
+    if (address){
       radio.setChannel(RADIO_CH);
       radio.setDataRate(RF24_2MBPS);
       radio.enableDynamicPayloads();
       radio.setCRCLength (RF24_CRC_16);
-      radio.openReadingPipe(1, ADDRESS & 0xFFFFFFFF00);
-      radio.openReadingPipe(2, ADDRESS & 0xFFFFFFFFFF);
+      radio.openReadingPipe(1, address & 0xFFFFFFFF00);
+      radio.openReadingPipe(2, address & 0xFFFFFFFFFF);
       radio.startListening();
       Serial.println("nRF24L01+ Radio hardware configured");
     } else {
@@ -317,70 +315,70 @@ void setup_nRF24() {
   }
 }
 
-void setup_homeAssistant() {
+void setupHomeAssistant() {
  // setup HA device
-  DEVICE.setUniqueId(MAC, sizeof(MAC));
-  DEVICE.setName(DEVICE_NAME);
-  DEVICE.setSoftwareVersion(SOFTWARE_VERSION);
-  DEVICE.setManufacturer(MANUFACTURER);
-  DEVICE.setModel(MODEL);
-  DEVICE.setConfigurationUrl(CONFIGURL);
-  DEVICE.enableExtendedUniqueIds();
-  DEVICE.enableSharedAvailability();
-  DEVICE.enableLastWill();
-  KEY_PRESS.setName("Key Press");
-  KEY_PRESS.setIcon("mdi:button-pointer");
-  KEY_PRESS.setForceUpdate(true);
-  KEY_PRESS.setExpireAfter(2);
-  UPTIME.setName("Uptime");
-  UPTIME.setEntityCategory("diagnostic");
-  UPTIME.setIcon("mdi:clock-check-outline");
-  UPTIME.setExpireAfter(40);
-  MAC_ADDRESS.setName("MAC Address");
-  MAC_ADDRESS.setIcon("mdi:ethernet");
-  MAC_ADDRESS.setEntityCategory("diagnostic");
-  IP_ADDRESS.setName("IP Address");
-  IP_ADDRESS.setIcon("mdi:network-outline");
-  IP_ADDRESS.setEntityCategory("diagnostic");
+  device.setUniqueId(mac, sizeof(mac));
+  device.setName(DEVICE_NAME);
+  device.setSoftwareVersion(SOFTWARE_VERSION);
+  device.setManufacturer(MANUFACTURER);
+  device.setModel(MODEL);
+  device.setConfigurationUrl(CONFIGURL);
+  device.enableExtendedUniqueIds();
+  device.enableSharedAvailability();
+  device.enableLastWill();
+  keyPress.setName("Key Press");
+  keyPress.setIcon("mdi:button-pointer");
+  keyPress.setForceUpdate(true);
+  keyPress.setExpireAfter(2);
+  upTime.setName("Uptime");
+  upTime.setEntityCategory("diagnostic");
+  upTime.setIcon("mdi:clock-check-outline");
+  upTime.setExpireAfter(40);
+  macAddress.setName("MAC Address");
+  macAddress.setIcon("mdi:ethernet");
+  macAddress.setEntityCategory("diagnostic");
+  ipAddress.setName("IP Address");
+  ipAddress.setIcon("mdi:network-outline");
+  ipAddress.setEntityCategory("diagnostic");
   if (USE_WIRED) {
-    WIFI_RSSI.setName("Link Speed");
-    WIFI_RSSI.setIcon("mdi:speedometer");
-    WIFI_RSSI.setUnitOfMeasurement("Mb/s");
+    wifiRssi.setName("Link Speed");
+    wifiRssi.setIcon("mdi:speedometer");
+    wifiRssi.setUnitOfMeasurement("Mb/s");
   } else {
-    WIFI_RSSI.setName("RSSI");
-    WIFI_RSSI.setIcon("mdi:wifi");
-    WIFI_RSSI.setUnitOfMeasurement("dBm");
+    wifiRssi.setName("RSSI");
+    wifiRssi.setIcon("mdi:wifi");
+    wifiRssi.setUnitOfMeasurement("dBm");
   }
-  WIFI_RSSI.setEntityCategory("diagnostic");
-  RADIO_STATUS.setName("Radio Status");
-  RADIO_STATUS.setIcon("mdi:radio-tower");
-  RADIO_STATUS.setEntityCategory("diagnostic");
-  REMOTE_ADDRESS.setName("Remote Address");
-  REMOTE_ADDRESS.setIcon("mdi:remote");
-  REMOTE_ADDRESS.setEntityCategory("diagnostic");
-  REBOOT_DEVICE.setName("Reboot");
-  REBOOT_DEVICE.setIcon("mdi:restart");
-  REBOOT_DEVICE.setEntityCategory("config");
-  REBOOT_DEVICE.onCommand(onButtonCommand);
-  RESET_DEVICE.setName("Reset");
-  RESET_DEVICE.setIcon("mdi:refresh");
-  RESET_DEVICE.setEntityCategory("config");
-  RESET_DEVICE.onCommand(onButtonCommand);
-  MIGRATE_ADDRESS.setName("Migrate");
-  MIGRATE_ADDRESS.setIcon("mdi:file-move-outline");
-  MIGRATE_ADDRESS.setEntityCategory("config");
-  MIGRATE_ADDRESS.onCommand(onButtonCommand);
+  wifiRssi.setEntityCategory("diagnostic");
+  radioStatus.setName("Radio Status");
+  radioStatus.setIcon("mdi:radio-tower");
+  radioStatus.setEntityCategory("diagnostic");
+  remoteAddress.setName("Remote Address");
+  remoteAddress.setIcon("mdi:remote");
+  remoteAddress.setEntityCategory("diagnostic");
+  rebootDevice.setName("Reboot");
+  rebootDevice.setIcon("mdi:restart");
+  rebootDevice.setEntityCategory("config");
+  rebootDevice.onCommand(onButtonCommand);
+  resetDevice.setName("Reset");
+  resetDevice.setIcon("mdi:refresh");
+  resetDevice.setEntityCategory("config");
+  resetDevice.onCommand(onButtonCommand);
+  migrateAddress.setName("Migrate");
+  migrateAddress.setIcon("mdi:file-move-outline");
+  migrateAddress.setEntityCategory("config");
+  migrateAddress.onCommand(onButtonCommand);
   // start MQTT connection
   Serial.print("Starting connection to MQTT broker at ");
   Serial.println(BROKER_ADDR);
-  MQTT.begin(BROKER_ADDR, BROKER_PORT, BROKER_USER, BROKER_PASS);
+  mqtt.begin(BROKER_ADDR, BROKER_PORT, BROKER_USER, BROKER_PASS);
 }
 
 void onButtonCommand(HAButton* sender) {
-  if (sender == &REBOOT_DEVICE) {
+  if (sender == &rebootDevice) {
     Serial.println("rebooting device");
     ESP.restart();
-  } else if (sender == &RESET_DEVICE) {
+  } else if (sender == &resetDevice) {
     prefs.remove("remote_address");
     Serial.print("resetting device");
     while (prefs.getULong64("remote_address", 0)) {
@@ -390,23 +388,23 @@ void onButtonCommand(HAButton* sender) {
     Serial.println("");
     Serial.println("rebooting device");
     ESP.restart();
-  } else if (sender == &MIGRATE_ADDRESS){
+  } else if (sender == &migrateAddress){
     if (REMOTE_ADR){
       Serial.println("migrating the remote address from ardunio_secrets.h to flash");
-      sprintf(ADDRESS_CHAR, "0x%llX", REMOTE_ADR);
-      save_preference();
-      restart_device();
+      sprintf(addressChar, "0x%llX", REMOTE_ADR);
+      savePreference();
+      restartDevice();
     } else {
       Serial.println("no remote address in ardunio_secrets.h to migrate");
     }
   }
 }
 
-void save_preference() {
+void savePreference() {
   Serial.print("The remote RF24 address is: ");
-  Serial.println(ADDRESS_CHAR);
-  REMOTE_ADDRESS.setValue(ADDRESS_CHAR);
-  prefs.putULong64("remote_address", strtoull(ADDRESS_CHAR, nullptr, 16));
+  Serial.println(addressChar);
+  remoteAddress.setValue(addressChar);
+  prefs.putULong64("remote_address", strtoull(addressChar, nullptr, 16));
   Serial.print("saving preference");
   while (!prefs.getULong64("remote_address", 0)) {
     Serial.print(".");
@@ -415,13 +413,13 @@ void save_preference() {
   Serial.println("");
 }
 
-void restart_device() {
+void restartDevice() {
   Serial.println("rebooting device");
   ESP.restart();
 }
 
-void initial_setup() {
-  REMOTE_ADDRESS.setValue(ADDRESS_CHAR);
+void initialSetup() {
+  remoteAddress.setValue(addressChar);
   // Send out data to trigger the Hub
   if(pingRetries == 0) {
       radio.setChannel(channels[channelId]);
@@ -443,21 +441,21 @@ void initial_setup() {
       radio.read(&dataReceived,payloadSize);
 
       if(payloadSize == 22) {
-          sprintf(ADDRESS_CHAR, "0x");
+          sprintf(addressChar, "0x");
           for(int i=3;i<8;i++) {
               char tmp[3];
               if(i < 7) sprintf(tmp,"%.2X",dataReceived[i]);
               else sprintf(tmp,"%.2X",dataReceived[i]-1);
-              strcat(ADDRESS_CHAR, tmp);
+              strcat(addressChar, tmp);
           }
           Serial.println("");
-          save_preference();
-          restart_device();
+          savePreference();
+          restartDevice();
       }      
   }
 }
 
-void regular_run() {
+void regularRun() {
   uint8_t pipeNum;
   if ( radio.available(&pipeNum) ) {
       // Read packet
@@ -465,7 +463,7 @@ void regular_run() {
       int payloadSize = radio.getDynamicPayloadSize();
       radio.read(&dataReceived,payloadSize);
       if (pipeNum > 0){
-        RADIOACTIVE = true;
+        radioActive = true;
         // Print contents of nRF25L01+ packet
         Serial.print("nRF24L01 received 0x");
         for(int i=0; i<payloadSize; i++) {
@@ -479,129 +477,128 @@ void regular_run() {
         Serial.print(" bytes on pipe ");
         Serial.print(pipeNum);
         Serial.println(")");
-      } else if (RADIOACTIVE) {
+      } else if (radioActive) {
         Serial.println("Radio has gone offline. Check connections, then reboot");
-        RADIOACTIVE = false;
+        radioActive = false;
       }
 
       // Interpret data from Harmony remote
       if(payloadSize >= 5) { // Should always be true but just to make sure
-        uint32_t command_id = 0;
+        uint32_t commandId = 0;
         for(int i=5; i > 0; i--) {
-          command_id <<= 8;
-          command_id += (uint32_t) dataReceived[i];
+          commandId <<= 8;
+          commandId += (uint32_t) dataReceived[i];
         }
 
         // Harmony state logic
-        if((command_id & 0x000000F0) == 0x000000C0) { // Button id
-          if(command_id == (harmony_current_command.id & 0x000000FF)) { // Button released
-            harmony_release_time = millis();
-            harmony_repeat_counter = 0;
+        if((commandId & 0x000000F0) == 0x000000C0) { // Button id
+          if(commandId == (harmonyCurrentCommand.id & 0x000000FF)) { // Button released
+            harmonyReleaseTime = millis();
+            harmonyRepeatCounter = 0;
             Serial.println("Button released...");
           } else { // New button press
-            harmony_press_time = millis();
-            harmony_repeat_counter = 1;
-            if(command_id == harmony_current_command.id) { // Repeated press
-              harmony_press_counter++;
+            harmonyPressTime = millis();
+            harmonyRepeatCounter = 1;
+            if(commandId == harmonyCurrentCommand.id) { // Repeated press
+              harmonyPressCounter++;
             } else { // New press
-              harmony_press_counter = 1;
-              harmony_current_command = get_harmony_command(command_id);
+              harmonyPressCounter = 1;
+              harmonyCurrentCommand = getHarmonyCommand(commandId);
               Serial.println("Button pressed...");
             }
           }
         }
-        if(command_id == harmony_hold) { // Listen to repeated hold messages to registre longer presses
-          harmony_hold_time = millis();
+        if(commandId == harmonyHold) { // Listen to repeated hold messages to registre longer presses
+          harmonyHoldTime = millis();
         }
       }
   }
 
   // Logic to send message to HA for different command types
   unsigned long now = millis();
-  if(harmony_press_counter > 0) { // A button was pressed
-    if(harmony_current_command.type <= 1) { // Click and and hold to repeat for type 1
+  if(harmonyPressCounter > 0) { // A button was pressed
+    if(harmonyCurrentCommand.type <= 1) { // Click and and hold to repeat for type 1
       int publish = false;
-      if(harmony_repeat_counter == 1) { // First repeat is immediate
+      if(harmonyRepeatCounter == 1) { // First repeat is immediate
         publish = true;        
       }
-      if(harmony_current_command.type == 1) {
-        if(harmony_repeat_counter == 2) { // Second press comes after some delay
-          if(now > harmony_repeat_time + SECOND_REPEAT_DURATION) {
+      if(harmonyCurrentCommand.type == 1) {
+        if(harmonyRepeatCounter == 2) { // Second press comes after some delay
+          if(now > harmonyRepeatTime + SECOND_REPEAT_DURATION) {
             publish = true;
           }
         }
-        if(harmony_repeat_counter > 2) {// Second press comes after some delay
-          if(now > harmony_repeat_time + FURTHER_REPEAT_DURATION) {
+        if(harmonyRepeatCounter > 2) {// Second press comes after some delay
+          if(now > harmonyRepeatTime + FURTHER_REPEAT_DURATION) {
             publish = true;
           }
         }
       }
       if(publish) {
         Serial.print("Publishing to Home Assistant: ");
-        Serial.println(harmony_current_command.name);
-        KEY_PRESS.setValue(harmony_current_command.name);
-        harmony_repeat_counter++;
-        harmony_repeat_time = now;
+        Serial.println(harmonyCurrentCommand.name);
+        keyPress.setValue(harmonyCurrentCommand.name);
+        harmonyRepeatCounter++;
+        harmonyRepeatTime = now;
       }
     }
-    if(harmony_current_command.type == 2) { // Complex button with click, double, multiple, long button
-      if(((harmony_release_time > harmony_press_time) && (now > harmony_release_time + WAIT_DURATION)) ||
-          (now > harmony_press_time + CLICK_DURATION)) { // The button was pressed and released, or held for long
-        if(harmony_release_time - harmony_press_time < CLICK_DURATION) { // Click
-          if(harmony_press_counter == 1) {
-            sprintf(mqtt_payload,"%s_clicked",harmony_current_command.name);
+    if(harmonyCurrentCommand.type == 2) { // Complex button with click, double, multiple, long button
+      if(((harmonyReleaseTime > harmonyPressTime) && (now > harmonyReleaseTime + WAIT_DURATION)) ||
+          (now > harmonyPressTime + CLICK_DURATION)) { // The button was pressed and released, or held for long
+        if(harmonyReleaseTime - harmonyPressTime < CLICK_DURATION) { // Click
+          if(harmonyPressCounter == 1) {
+            sprintf(mqttPayload,"%s_clicked",harmonyCurrentCommand.name);
           }
-          if(harmony_press_counter == 2) {
-            sprintf(mqtt_payload,"%s_double",harmony_current_command.name);
+          if(harmonyPressCounter == 2) {
+            sprintf(mqttPayload,"%s_double",harmonyCurrentCommand.name);
           }
-          if(harmony_press_counter > 2) {
-            sprintf(mqtt_payload,"%s_multiple",harmony_current_command.name);
+          if(harmonyPressCounter > 2) {
+            sprintf(mqttPayload,"%s_multiple",harmonyCurrentCommand.name);
           }
         } else { // Long press
-          sprintf(mqtt_payload,"%s_long",harmony_current_command.name);
+          sprintf(mqttPayload,"%s_long",harmonyCurrentCommand.name);
         }
         Serial.print("Publishing to Home Assistant: ");
-        Serial.println(mqtt_payload);
-        KEY_PRESS.setValue(mqtt_payload);
-        harmony_press_counter = 0;
+        Serial.println(mqttPayload);
+        keyPress.setValue(mqttPayload);
+        harmonyPressCounter = 0;
       } 
     }
   }
   // Harmony timeout logic to reset state in case of lost packets
-  if((now > harmony_press_time + WAIT_DURATION) &&
-     (now > harmony_release_time + WAIT_DURATION) &&
-     (now > harmony_hold_time + WAIT_DURATION)) {
+  if((now > harmonyPressTime + WAIT_DURATION) &&
+     (now > harmonyReleaseTime + WAIT_DURATION) &&
+     (now > harmonyHoldTime + WAIT_DURATION)) {
      // Reset states
-     harmony_press_counter = 0;
-     harmony_repeat_counter = 0;
-     harmony_current_command.id = 0;
+     harmonyPressCounter = 0;
+     harmonyRepeatCounter = 0;
+     harmonyCurrentCommand.id = 0;
   }  
 }
 
-harmony_command_t
-get_harmony_command(uint32_t id) {
+harmonyCommandT
+getHarmonyCommand(uint32_t id) {
   int i = 0;
   // Search regular commands
-  while(harmony_command_list[i].id != 0) {
-    if(harmony_command_list[i].id == id) return harmony_command_list[i];
+  while(harmonyCommandList[i].id != 0) {
+    if(harmonyCommandList[i].id == id) return harmonyCommandList[i];
     i++;
   }
   // Return undefined (default) command
-  sprintf(harmony_default_command_name,"%.8X",id);
-  harmony_default_command.id = id;
-  return harmony_default_command;
+  sprintf(harmonyDefaultCommandName,"%.8X",id);
+  harmonyDefaultCommand.id = id;
+  return harmonyDefaultCommand;
 }
 
 void loop() {
-  MQTT.loop();
+  mqtt.loop();
 
-  if (ADDRESS) {
-    regular_run();
-  } else if (!GOT_ADDRESS) {
-    initial_setup();
+  if (address) {
+    regularRun();
+  } else {
+    initialSetup();
   }
-
-  if ((millis() - SHORT_LAST_UPDATE_AT) > 2000) { // update in 2s interval
+  if ((millis() - shortLastUpdateAt) > 2000) { // update in 2s interval
     unsigned long seconds = millis() / 1000;
     int days = seconds / (24 * 3600);
     seconds = seconds % (24 * 3600);
@@ -610,30 +607,28 @@ void loop() {
     int minutes = seconds /  60;
     seconds = seconds % 60;
     if ( days > 3650 ) {
-      sprintf(UPTIME_CHAR, "%ds", 0);
+      sprintf(uptimeChar, "%ds", 0);
     } else if ( days ) {
-      sprintf(UPTIME_CHAR, "%dd %dh %dm %ds", days,hours,minutes,seconds);
+      sprintf(uptimeChar, "%dd %dh %dm %ds", days,hours,minutes,seconds);
     } else if ( hours ) {
-      sprintf(UPTIME_CHAR, "%dh %dm %ds", hours,minutes,seconds);
+      sprintf(uptimeChar, "%dh %dm %ds", hours,minutes,seconds);
     } else if ( minutes ) {
-      sprintf(UPTIME_CHAR, "%dm %ds", minutes,seconds);
+      sprintf(uptimeChar, "%dm %ds", minutes,seconds);
     } else {
-      sprintf(UPTIME_CHAR, "%ds", seconds);
+      sprintf(uptimeChar, "%ds", seconds);
     }
-    UPTIME.setValue(UPTIME_CHAR);
-    RADIO_STATUS.setState(RADIOACTIVE);
-    REMOTE_ADDRESS.setValue(ADDRESS_CHAR);
-    SHORT_LAST_UPDATE_AT = millis();
+    upTime.setValue(uptimeChar);
+    radioStatus.setState(radioActive);
+    remoteAddress.setValue(addressChar);
+    shortLastUpdateAt = millis();
   }
-
-  if ((millis() - LONG_LAST_UPDATE_AT) > 60000) { // update in 60s interval
-    LONG_LAST_UPDATE_AT = millis();
-    MAC_ADDRESS.setValue(MAC_CHAR);
-    IP_ADDRESS.setValue(IP_CHAR);
+  if ((millis() - longLastUpdateAt) > 60000) { // update in 60s interval
+    longLastUpdateAt = millis();
+    macAddress.setValue(macChar);
+    ipAddress.setValue(ipChar);
     if (!USE_WIRED){
-      sprintf(RSSI_CHAR, "%d", GET_WIFI_RSSI);
+      sprintf(rssiChar, "%d", GET_WIFI_RSSI);
     }
-    WIFI_RSSI.setValue(RSSI_CHAR);
+    wifiRssi.setValue(rssiChar);
   }
-
 }
