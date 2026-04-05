@@ -78,7 +78,7 @@
 // CMD_PLUS - key press (default 0)
 // CMD_MINUS - key press (default 0)
 
-#define SOFTWARE_VERSION "2.3.0"
+#define SOFTWARE_VERSION "2.3.1"
 #define MANUFACTURER "pkscout"
 #define MODEL "Harmony Companion OpenHub"
 #define CONFIGURL "https://github.com/pkscout/Harmoino"
@@ -247,7 +247,7 @@ void setupPreferences() {
     Serial.print("The remote address is ");
     Serial.println(addressChar);
   } else {
-    sprintf(addressChar, "none");
+    sprintf(addressChar, "ready for pairing");
     Serial.println("No remote address, triggering initial setup");
   }
 }
