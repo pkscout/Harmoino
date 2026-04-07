@@ -78,7 +78,7 @@
 // CMD_PLUS - key press (default 0)
 // CMD_MINUS - key press (default 0)
 
-#define SOFTWARE_VERSION "2.3.3"
+#define SOFTWARE_VERSION "2.3.4"
 #define MANUFACTURER "pkscout"
 #define MODEL "Harmoino OpenHub for Home Assistant"
 #define CONFIG_URL "https://github.com/pkscout/Harmoino"
@@ -266,7 +266,7 @@ void setupNetwork() {
   }
   GET_MAC;
   sprintf(macChar, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-  Serial.println(""),
+  Serial.println("");
   Serial.print("Mac Address: ");
   Serial.println(macChar);
   IPAddress ip = GET_LOCALIP;
@@ -376,8 +376,7 @@ void setupHomeAssistant() {
 
 void onButtonCommand(HAButton* sender) {
   if (sender == &rebootDevice) {
-    Serial.println("rebooting device");
-    ESP.restart();
+    restartDevice();
   } else if (sender == &resetDevice) {
     prefs.remove("remote_address");
     Serial.print("resetting device");
@@ -386,8 +385,7 @@ void onButtonCommand(HAButton* sender) {
       delay(100);
     }
     Serial.println("");
-    Serial.println("rebooting device");
-    ESP.restart();
+    restartDevice();
   } else if (sender == &migrateAddress){
     if (REMOTE_ADR){
       Serial.println("migrating the remote address from ardunio_secrets.h to flash");
